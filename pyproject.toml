@@ -1,0 +1,85 @@
+[tool.ruff]
+# Python 3.12 想定。別バージョンならここだけ変える
+target-version = "py312"
+
+# 88でもええけど、業務コードやと100くらいが見やすいこと多い
+line-length = 100
+
+# pre-commit や明示指定時でも除外設定をちゃんと効かせる
+force-exclude = true
+
+# 不安定機能はまだ使わない
+preview = false
+
+exclude = [
+  ".git",
+  ".mypy_cache",
+  ".pytest_cache",
+  ".ruff_cache",
+  ".tox",
+  ".venv",
+  "__pycache__",
+  "build",
+  "dist",
+  "node_modules",
+  "venv",
+]
+
+[tool.ruff.lint]
+# デフォルトの基本ルールに、実用的なやつだけ足す
+extend-select = [
+  "W",    # pycodestyle warnings
+  "I",    # import sort
+  "N",    # pep8-naming
+  "UP",   # pyupgrade
+  "B",    # bugbear
+  "C4",   # comprehensions
+  "SIM",  # simplify
+  "RET",  # return 周り
+  "PTH",  # pathlib 推奨
+  "RUF",  # Ruff 独自ルール
+  "C90",  # 複雑度
+  "D",    # docstring
+]
+
+ignore = [
+  # docstring を“必須”にはしない
+  "D100",
+  "D101",
+  "D102",
+  "D103",
+  "D104",
+  "D105",
+  "D107",
+
+  # 日本語 Docstring でも運用しやすいように句点系は緩める
+  "D400",
+  "D415",
+]
+
+[tool.ruff.lint.pydocstyle]
+# Google スタイル
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+# 複雑すぎる関数を警告
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+# package の再公開 import を許容
+"__init__.py" = ["F401"]
+
+# テストコードは少し緩める
+"tests/**/*.py" = [
+  "D",
+  "C901",
+]
+
+[tool.ruff.format]
+# 明示しておくとブレにくい
+quote-style = "double"
+indent-style = "space"
+
+# Docstring 内のコード例も整形する
+docstring-code-format = true
+docstring-code-line-length = "dynamic"
