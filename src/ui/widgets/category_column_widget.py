@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-from PyQt6.QtCore import QPoint, Qt, pyqtSignal
+import contextlib
+
+from PyQt6.QtCore import (
+    QEasingCurve,
+    QParallelAnimationGroup,
+    QPoint,
+    QPropertyAnimation,
+    Qt,
+    pyqtSignal,
+)
 from PyQt6.QtGui import QDragEnterEvent, QDropEvent
 from PyQt6.QtWidgets import (
     QAbstractItemView,
@@ -23,7 +32,7 @@ from ui.widgets.task_card_widget import TaskCardWidget
 
 
 class TaskListWidget(QListWidget):
-    reordered = pyqtSignal(str, str, list)
+    drop_committed = pyqtSignal(str, str, list, bool, object, object)
 
     def __init__(self, category_id: str, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -43,13 +52,23 @@ class TaskListWidget(QListWidget):
             mime_data.setText(str(items[0].data(Qt.ItemDataRole.UserRole)))
         return mime_data
 
-    def dragEnterEvent(self, event: QDragEnterEvent) -> None:
+    def drag_enter_event(self, event: QDragEnterEvent) -> None:
         event.acceptProposedAction()
 
-    def dropEvent(self, event: QDropEvent) -> None:
+    def drop_event(self, event: QDropEvent) -> None:
+        is_same_category_drop = event.source() is self
+        before_positions = self._capture_item_positions() if is_same_category_drop else {}
         moved_task_id = event.mimeData().text()
         super().dropEvent(event)
-        self.reordered.emit(self._category_id, moved_task_id, self.task_ids())
+        after_positions = self._capture_item_positions() if is_same_category_drop else {}
+        self.drop_committed.emit(
+            self._category_id,
+            moved_task_id,
+            self.task_ids(),
+            is_same_category_drop,
+            before_positions,
+            after_positions,
+        )
 
     def task_ids(self) -> list[str]:
         ids: list[str] = []
@@ -57,6 +76,25 @@ class TaskListWidget(QListWidget):
             item = self.item(row)
             ids.append(str(item.data(Qt.ItemDataRole.UserRole)))
         return ids
+
+    def task_widget(self, task_id: str) -> TaskCardWidget | None:
+        for row in range(self.count()):
+            item = self.item(row)
+            if str(item.data(Qt.ItemDataRole.UserRole)) != task_id:
+                continue
+            widget = self.itemWidget(item)
+            if isinstance(widget, TaskCardWidget):
+                return widget
+            return None
+        return None
+
+    def _capture_item_positions(self) -> dict[str, QPoint]:
+        positions: dict[str, QPoint] = {}
+        for row in range(self.count()):
+            item = self.item(row)
+            task_id = str(item.data(Qt.ItemDataRole.UserRole))
+            positions[task_id] = self.visualItemRect(item).topLeft()
+        return positions
 
 
 class CategoryColumnWidget(QFrame):
@@ -69,6 +107,11 @@ class CategoryColumnWidget(QFrame):
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
         self._category: Category | None = None
+        self._reorder_animation: QParallelAnimationGroup | None = None
+        self._reorder_overlay: QWidget | None = None
+        self._reorder_hidden_cards: list[QWidget] = []
+        self._reorder_ghosts: list[QLabel] = []
+        self._pending_reorder_payload: tuple[str, str, list] | None = None
 
         self.setFrameShape(QFrame.Shape.StyledPanel)
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -85,7 +128,7 @@ class CategoryColumnWidget(QFrame):
         header.setContentsMargins(0, 0, 0, 0)
         self._title_label = QLabel("-")
         self._title_label.setStyleSheet("font-weight:700;")
-        self._add_button = QPushButton("＋")
+        self._add_button = QPushButton("+")
         self._add_button.setFixedWidth(28)
         self._add_button.clicked.connect(self._emit_add_task)
         header.addWidget(self._title_label)
@@ -98,7 +141,7 @@ class CategoryColumnWidget(QFrame):
         self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
         self._list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self._list.customContextMenuRequested.connect(self._on_context_menu)
-        self._list.reordered.connect(self.tasks_reordered.emit)
+        self._list.drop_committed.connect(self._on_drop_committed)
         root.addWidget(self._list)
 
     def set_category(self, category: Category) -> None:
@@ -113,6 +156,7 @@ class CategoryColumnWidget(QFrame):
         labels: dict[str, Label],
         date_format: str,
     ) -> None:
+        self._finalize_active_reorder_animation(emit_pending=False)
         self._list.clear()
         for task in tasks:
             item = QListWidgetItem()
@@ -155,3 +199,131 @@ class CategoryColumnWidget(QFrame):
             return
         global_pos = self._header_widget.mapToGlobal(point)
         self.category_context_requested.emit(self._category.id, global_pos)
+
+    def _on_drop_committed(
+        self,
+        category_id: str,
+        moved_task_id: str,
+        ordered_ids: list[str],
+        is_same_category_drop: bool,
+        before_positions_obj: object,
+        after_positions_obj: object,
+    ) -> None:
+        self._finalize_active_reorder_animation(emit_pending=True)
+
+        payload = (category_id, moved_task_id, ordered_ids)
+        if not is_same_category_drop:
+            self.tasks_reordered.emit(*payload)
+            return
+
+        before_positions = before_positions_obj if isinstance(before_positions_obj, dict) else {}
+        after_positions = after_positions_obj if isinstance(after_positions_obj, dict) else {}
+        started = self._start_reorder_animation(before_positions, after_positions)
+        if not started:
+            self.tasks_reordered.emit(*payload)
+            return
+        self._pending_reorder_payload = payload
+
+    def _start_reorder_animation(
+        self,
+        before_positions: dict[str, QPoint],
+        after_positions: dict[str, QPoint],
+    ) -> bool:
+        moving_task_ids = [
+            task_id
+            for task_id, before_pos in before_positions.items()
+            if task_id in after_positions and before_pos != after_positions[task_id]
+        ]
+        if not moving_task_ids:
+            return False
+
+        viewport = self._list.viewport()
+        overlay = QWidget(viewport)
+        overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        overlay.setAttribute(Qt.WidgetAttribute.WA_NoSystemBackground, True)
+        overlay.setGeometry(viewport.rect())
+        overlay.show()
+
+        group = QParallelAnimationGroup(self)
+        hidden_cards: list[QWidget] = []
+        ghosts: list[QLabel] = []
+
+        for task_id in moving_task_ids:
+            card = self._list.task_widget(task_id)
+            if card is None:
+                continue
+            start_pos = before_positions.get(task_id)
+            end_pos = after_positions.get(task_id)
+            if not isinstance(start_pos, QPoint) or not isinstance(end_pos, QPoint):
+                continue
+
+            ghost = QLabel(overlay)
+            ghost.setPixmap(card.grab())
+            ghost.setFixedSize(card.size())
+            ghost.move(start_pos)
+            ghost.show()
+            ghost.raise_()
+            ghosts.append(ghost)
+
+            card.setVisible(False)
+            hidden_cards.append(card)
+
+            animation = QPropertyAnimation(ghost, b"pos", group)
+            animation.setDuration(180)
+            animation.setEasingCurve(QEasingCurve.Type.OutCubic)
+            animation.setStartValue(start_pos)
+            animation.setEndValue(end_pos)
+            group.addAnimation(animation)
+
+        if group.animationCount() == 0:
+            overlay.deleteLater()
+            for card in hidden_cards:
+                card.setVisible(True)
+            return False
+
+        self._reorder_animation = group
+        self._reorder_overlay = overlay
+        self._reorder_hidden_cards = hidden_cards
+        self._reorder_ghosts = ghosts
+        self._reorder_animation.finished.connect(self._on_reorder_animation_finished)
+        self._reorder_animation.start()
+        return True
+
+    def _on_reorder_animation_finished(self) -> None:
+        payload = self._pending_reorder_payload
+        self._pending_reorder_payload = None
+        self._cleanup_reorder_animation()
+        if payload is not None:
+            self.tasks_reordered.emit(*payload)
+
+    def _finalize_active_reorder_animation(self, emit_pending: bool) -> None:
+        if self._reorder_animation is None:
+            return
+        with contextlib.suppress(TypeError):
+            self._reorder_animation.finished.disconnect(self._on_reorder_animation_finished)
+        self._reorder_animation.stop()
+
+        payload = self._pending_reorder_payload
+        self._pending_reorder_payload = None
+        self._cleanup_reorder_animation()
+
+        if emit_pending and payload is not None:
+            self.tasks_reordered.emit(*payload)
+
+    def _cleanup_reorder_animation(self) -> None:
+        for card in self._reorder_hidden_cards:
+            with contextlib.suppress(RuntimeError):
+                card.setVisible(True)
+        self._reorder_hidden_cards.clear()
+
+        for ghost in self._reorder_ghosts:
+            ghost.deleteLater()
+        self._reorder_ghosts.clear()
+
+        if self._reorder_overlay is not None:
+            self._reorder_overlay.deleteLater()
+            self._reorder_overlay = None
+
+        if self._reorder_animation is not None:
+            self._reorder_animation.deleteLater()
+            self._reorder_animation = None

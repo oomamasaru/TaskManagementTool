@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+
 from PyQt6.QtCore import QPoint
 from PyQt6.QtGui import QAction
 from PyQt6.QtWidgets import (
@@ -146,10 +148,8 @@ class MainWindow(QMainWindow):
         try:
             dialog.exec()
         finally:
-            try:
+            with contextlib.suppress(TypeError):
                 self._store.board_changed.disconnect(refresh)
-            except TypeError:
-                pass
 
     def open_status_manager_dialog(self) -> None:
         dialog = StatusManagerDialog(self)
@@ -166,10 +166,8 @@ class MainWindow(QMainWindow):
         try:
             dialog.exec()
         finally:
-            try:
+            with contextlib.suppress(TypeError):
                 self._store.board_changed.disconnect(refresh)
-            except TypeError:
-                pass
 
     def open_category_manager_dialog(self) -> None:
         dialog = CategoryManagerDialog(self)
@@ -185,10 +183,8 @@ class MainWindow(QMainWindow):
         try:
             dialog.exec()
         finally:
-            try:
+            with contextlib.suppress(TypeError):
                 self._store.board_changed.disconnect(refresh)
-            except TypeError:
-                pass
 
     def open_settings_dialog(self) -> None:
         dialog = SettingsDialog(self)
@@ -227,13 +223,8 @@ class MainWindow(QMainWindow):
 
     def _create_menu(self) -> None:
         menu_bar = self.menuBar()
-        # task_menu = menu_bar.addMenu("タスク")
         manage_menu = menu_bar.addMenu("管理")
         edit_menu = menu_bar.addMenu("編集")
-
-        # open_completed_action = QAction("完了済みタスク一覧", self)
-        # open_completed_action.triggered.connect(self.open_completed_tasks_dialog)
-        # task_menu.addAction(open_completed_action)
 
         open_category_action = QAction("カテゴリ管理", self)
         open_category_action.triggered.connect(self.open_category_manager_dialog)
@@ -345,7 +336,7 @@ class MainWindow(QMainWindow):
         answer = QMessageBox.question(
             self,
             "確認",
-            "このタスクを削除しますか？",
+            "このタスクを削除しますか?",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
