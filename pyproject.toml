@@ -83,3 +83,8 @@ indent-style = "space"
 # Docstring 内のコード例も整形する
 docstring-code-format = true
 docstring-code-line-length = "dynamic"
+
+[tool.pyright]
+# src レイアウトの場合、src を検索パスに追加してインポートエラーを防ぐ
+extraPaths = ["src"]
+typeCheckingMode = "basic"

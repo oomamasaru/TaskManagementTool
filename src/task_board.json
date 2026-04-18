@@ -1,0 +1,158 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "cat_a",
+      "name": "カテゴリA",
+      "sort_order": 1
+    },
+    {
+      "id": "cat_82737ae8",
+      "name": "カテゴリB",
+      "sort_order": 2
+    },
+    {
+      "id": "cat_54396e51",
+      "name": "カテゴリC",
+      "sort_order": 3
+    }
+  ],
+  "labels": [
+    {
+      "id": "label_600eb26b",
+      "name": "label",
+      "color": "#FEE2E2",
+      "sort_order": 1
+    },
+    {
+      "id": "label_a0871269",
+      "name": "aaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbb",
+      "color": "#DCFCE7",
+      "sort_order": 2
+    },
+    {
+      "id": "label_3bbd60e9",
+      "name": "aaaaaaaaaaaaaaaaaaaaaaaa",
+      "color": "#CFFAFE",
+      "sort_order": 3
+    }
+  ],
+  "statuses": [
+    {
+      "id": "not_started",
+      "name": "未設定",
+      "color": "#6B7280",
+      "sort_order": 1,
+      "is_system": true,
+      "hides_from_board": false
+    },
+    {
+      "id": "status_de5b5b11",
+      "name": "調査中",
+      "color": "#D97706",
+      "sort_order": 2,
+      "is_system": false,
+      "hides_from_board": false
+    },
+    {
+      "id": "in_progress",
+      "name": "作業中",
+      "color": "#2563EB",
+      "sort_order": 3,
+      "is_system": false,
+      "hides_from_board": false
+    },
+    {
+      "id": "completed",
+      "name": "完了",
+      "color": "#059669",
+      "sort_order": 999,
+      "is_system": true,
+      "hides_from_board": true
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task_072dd33d",
+      "title": "test",
+      "due_date": "2026-04-24",
+      "category_id": "cat_a",
+      "label_ids": [
+        "label_600eb26b"
+      ],
+      "color": "#FEE2E2",
+      "detail": "test",
+      "sort_order": 1,
+      "status_id": "in_progress",
+      "completed_at": null,
+      "created_at": "2026-04-18T12:02:16",
+      "updated_at": "2026-04-18T15:38:42"
+    },
+    {
+      "id": "task_01323c0a",
+      "title": "test",
+      "due_date": null,
+      "category_id": "cat_a",
+      "label_ids": [
+        "label_600eb26b"
+      ],
+      "color": "#FFEDD5",
+      "detail": "test",
+      "sort_order": 2,
+      "status_id": "status_de5b5b11",
+      "completed_at": null,
+      "created_at": "2026-04-18T12:57:58",
+      "updated_at": "2026-04-18T14:28:57"
+    },
+    {
+      "id": "task_ecf50b81",
+      "title": "testtest",
+      "due_date": null,
+      "category_id": "cat_82737ae8",
+      "label_ids": [],
+      "color": null,
+      "detail": "",
+      "sort_order": 1,
+      "status_id": "not_started",
+      "completed_at": null,
+      "created_at": "2026-04-18T14:55:57",
+      "updated_at": "2026-04-18T14:55:57"
+    },
+    {
+      "id": "task_22e20e22",
+      "title": "teststetsets",
+      "due_date": null,
+      "category_id": "cat_a",
+      "label_ids": [
+        "label_a0871269"
+      ],
+      "color": null,
+      "detail": "",
+      "sort_order": 3,
+      "status_id": "not_started",
+      "completed_at": null,
+      "created_at": "2026-04-18T14:56:10",
+      "updated_at": "2026-04-18T14:56:10"
+    },
+    {
+      "id": "task_5d721076",
+      "title": "testssssssss",
+      "due_date": null,
+      "category_id": "cat_54396e51",
+      "label_ids": [
+        "label_3bbd60e9"
+      ],
+      "color": "#E7D3C8",
+      "detail": "",
+      "sort_order": 1,
+      "status_id": "not_started",
+      "completed_at": null,
+      "created_at": "2026-04-18T16:04:02",
+      "updated_at": "2026-04-18T16:04:02"
+    }
+  ],
+  "settings": {
+    "data_file_path": "C:\\Users\\oomam\\git\\TaskManagementTool\\TaskManagementTool\\src\\task_board.json",
+    "date_format": "%Y-%m-%d"
+  }
+}

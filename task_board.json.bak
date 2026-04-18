@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "categories": [
+    {
+      "id": "cat_a",
+      "name": "A",
+      "sort_order": 1
+    },
+    {
+      "id": "cat_b",
+      "name": "B",
+      "sort_order": 2
+    }
+  ],
+  "labels": [
+    {
+      "id": "label_11b880bb",
+      "name": "test_label",
+      "color": "#FEE2E2",
+      "sort_order": 1
+    }
+  ],
+  "statuses": [
+    {
+      "id": "not_started",
+      "name": "未着手",
+      "color": "#6B7280",
+      "sort_order": 1,
+      "is_system": true,
+      "hides_from_board": false
+    },
+    {
+      "id": "in_progress",
+      "name": "作業中",
+      "color": "#2563EB",
+      "sort_order": 2,
+      "is_system": false,
+      "hides_from_board": false
+    },
+    {
+      "id": "completed",
+      "name": "完了",
+      "color": "#059669",
+      "sort_order": 999,
+      "is_system": true,
+      "hides_from_board": true
+    }
+  ],
+  "tasks": [],
+  "settings": {
+    "data_file_path": "C:\\Users\\oomam\\git\\TaskManagementTool\\TaskManagementTool\\task_board.json",
+    "date_format": "%Y-%m-%d",
+    "redo_shortcut": "Ctrl+Y",
+    "theme": "light"
+  }
+}
