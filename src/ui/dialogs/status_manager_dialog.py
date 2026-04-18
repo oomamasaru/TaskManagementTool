@@ -41,7 +41,7 @@ class StatusCardWidget(QFrame):
         name.setStyleSheet(f"font-weight:600;color:{text_color};")
         root.addWidget(name)
 
-        detail_text = [status.color]
+        detail_text = []
         if status.is_system:
             detail_text.append("システム")
         if status.hides_from_board:
@@ -62,7 +62,7 @@ class StatusListWidget(QListWidget):
         self.setDefaultDropAction(Qt.DropAction.MoveAction)
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
 
-    def dropEvent(self, event: QDropEvent) -> None:
+    def drop_event(self, event: QDropEvent) -> None:
         super().dropEvent(event)
         self.reordered.emit(self.status_ids())
 

@@ -52,10 +52,10 @@ class TaskListWidget(QListWidget):
             mime_data.setText(str(items[0].data(Qt.ItemDataRole.UserRole)))
         return mime_data
 
-    def drag_enter_event(self, event: QDragEnterEvent) -> None:
+    def dragEnterEvent(self, event: QDragEnterEvent) -> None:  # noqa: N802
         event.acceptProposedAction()
 
-    def drop_event(self, event: QDropEvent) -> None:
+    def dropEvent(self, event: QDropEvent) -> None:  # noqa: N802
         is_same_category_drop = event.source() is self
         before_positions = self._capture_item_positions() if is_same_category_drop else {}
         moved_task_id = event.mimeData().text()
