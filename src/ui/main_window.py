@@ -4,7 +4,7 @@ import contextlib
 from collections.abc import Callable
 
 from PyQt6.QtCore import QPoint
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QCloseEvent
 from PyQt6.QtWidgets import (
     QMainWindow,
     QMenu,
@@ -253,9 +253,22 @@ class MainWindow(QMainWindow):
         self._redo_action.triggered.connect(self._controller.redo)
         edit_menu.addAction(self._redo_action)
 
-    def _sync_undo_redo_state(self) -> None:
-        self._undo_action.setEnabled(self._store.undo_stack.canUndo())
-        self._redo_action.setEnabled(self._store.undo_stack.canRedo())
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        with contextlib.suppress(TypeError, RuntimeError):
+            self._store.board_changed.disconnect(self.refresh_view)
+        with contextlib.suppress(TypeError, RuntimeError):
+            self._store.undo_stack.canUndoChanged.disconnect(self._sync_undo_redo_state)
+        with contextlib.suppress(TypeError, RuntimeError):
+            self._store.undo_stack.canRedoChanged.disconnect(self._sync_undo_redo_state)
+        super().closeEvent(event)
+
+    def _sync_undo_redo_state(self, *_args: object) -> None:
+        try:
+            self._undo_action.setEnabled(self._store.undo_stack.canUndo())
+            self._redo_action.setEnabled(self._store.undo_stack.canRedo())
+        except RuntimeError:
+            # Window teardown can outlive QUndoStack (C++ object), so ignore late signal calls.
+            return
 
     def _on_filter_changed(self, *_args) -> None:
         self._controller.set_filter(
