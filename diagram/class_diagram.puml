@@ -1,0 +1,391 @@
+@startuml
+skinparam style strictuml
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+hide empty members
+
+title TaskManagementTool クラス図
+
+package "domain.models" {
+  class BoardData {
+    +version: int
+    +categories: list[Category]
+    +labels: list[Label]
+    +statuses: list[Status]
+    +tasks: list[Task]
+    +settings: AppSettings
+  }
+
+  class Task {
+    +id: str
+    +title: str
+    +due_date: date?
+    +category_id: str
+    +label_ids: list[str]
+    +color: str?
+    +detail: str
+    +sort_order: int
+    +status_id: str
+    +completed_at: datetime?
+    +created_at: datetime
+    +updated_at: datetime
+  }
+
+  class Category {
+    +id: str
+    +name: str
+    +sort_order: int
+  }
+
+  class Label {
+    +id: str
+    +name: str
+    +color: str
+    +sort_order: int
+  }
+
+  class Status {
+    +id: str
+    +name: str
+    +color: str
+    +sort_order: int
+    +is_system: bool
+    +hides_from_board: bool
+  }
+
+  class FilterCondition {
+    +search_text: str
+    +active_label_ids: set[str]
+    +include_no_label: bool
+  }
+
+  class AppSettings {
+    +data_file_path: str
+    +date_format: str
+    +redo_shortcut: str
+    +theme: str
+  }
+}
+
+package "app" {
+  class BoardStore {
+    -board_data: BoardData
+    -filter_condition: FilterCondition
+    -selected_task_id: str?
+    -undo_stack: QUndoStack
+    +load(data: BoardData)
+    +get_tasks_for_category(category_id: str): list[Task]
+    +get_completed_tasks(): list[Task]
+    +get_labels(): list[Label]
+    +get_statuses(): list[Status]
+    +set_filter(condition: FilterCondition)
+    +notify_board_changed()
+  }
+
+  class AppController {
+    +add_task(input)
+    +edit_task(task_id: str, input)
+    +delete_task(task_id: str)
+    +duplicate_task(task_id: str)
+    +move_task(task_id: str, category_id: str, order: int)
+    +change_task_status(task_id: str, status_id: str)
+    +save()
+  }
+}
+
+package "app.services" {
+  class TaskService {
+    +create_task(...): Task
+    +update_task(...): Task
+    +delete_task(task_id: str)
+    +duplicate_task(task_id: str): Task
+    +move_task(task_id: str, category_id: str, order: int)
+    +change_status(task_id: str, status_id: str)
+    +restore_task(task_id: str)
+  }
+
+  class CategoryService {
+    +add_category(name: str): Category
+    +delete_category(category_id: str)
+    +reorder_categories(...)
+  }
+
+  class LabelService {
+    +add_label(name: str, color: str): Label
+    +update_label(...)
+    +delete_label(label_id: str)
+  }
+
+  class StatusService {
+    +add_status(...): Status
+    +update_status(...)
+    +delete_status(status_id: str, replacement_status_id: str)
+    +mark_completed(task_id: str)
+    +restore_to_not_started(task_id: str)
+  }
+
+  class FilterService {
+    +matches(task: Task, condition: FilterCondition): bool
+    +apply(tasks: list[Task], condition: FilterCondition): list[Task]
+  }
+
+  class CompletedTaskService {
+    +get_completed_tasks(): list[Task]
+    +restore_task(task_id: str)
+    +delete_completed_task(task_id: str)
+  }
+}
+
+package "commands" {
+  abstract class BaseCommand {
+    #store: BoardStore
+    #repository: JsonBoardRepository
+    +undo()
+    +redo()
+    #save_board()
+  }
+
+  class AddTaskCommand {
+    -task: Task
+    +undo()
+    +redo()
+  }
+
+  class EditTaskCommand {
+    -before_task: Task
+    -after_task: Task
+    +undo()
+    +redo()
+  }
+
+  class DeleteTaskCommand {
+    -deleted_task: Task
+    +undo()
+    +redo()
+  }
+
+  class DuplicateTaskCommand {
+    -source_task_id: str
+    -duplicated_task: Task
+    +undo()
+    +redo()
+  }
+
+  class MoveTaskCommand {
+    -task_id: str
+    -before_category_id: str
+    -after_category_id: str
+    -before_order_task_ids: list[str]
+    -after_order_task_ids: list[str]
+    +undo()
+    +redo()
+  }
+
+  class ChangeTaskStatusCommand {
+    -task_id: str
+    -before_status_id: str
+    -after_status_id: str
+    -before_completed_at: datetime?
+    -after_completed_at: datetime?
+    +undo()
+    +redo()
+  }
+}
+
+package "infrastructure.repositories" {
+  interface BoardRepository {
+    +load(): BoardData
+    +save(data: BoardData)
+  }
+
+  class JsonBoardRepository {
+    -serializer: BoardSerializer
+    -writer: AtomicFileWriter
+    -backup_manager: BackupManager
+    +load(): BoardData
+    +save(data: BoardData)
+  }
+}
+
+package "infrastructure.serializers" {
+  class BoardSerializer {
+    +to_dict(data: BoardData): dict
+    +from_dict(payload: dict): BoardData
+  }
+}
+
+package "infrastructure.fileio" {
+  class AtomicFileWriter {
+    +write(path: str, content: str)
+  }
+
+  class BackupManager {
+    +create_backup(path: str)
+  }
+}
+
+package "infrastructure.providers" {
+  class DateTimeProvider {
+    +now(): datetime
+  }
+
+  class IdProvider {
+    +new_id(): str
+  }
+}
+
+package "ui" {
+  class MainWindow {
+    -controller: AppController
+    -store: BoardStore
+    -board_widget: BoardWidget
+    +open_task_dialog(task_id: str?)
+    +open_completed_tasks_dialog()
+    +open_label_manager_dialog()
+    +open_status_manager_dialog()
+    +refresh_view()
+  }
+
+  class BoardWidget {
+    +rebuild_columns()
+  }
+
+  class CategoryColumnWidget {
+    +set_category(category: Category)
+    +render_tasks(tasks: list[Task])
+  }
+
+  class TaskCardWidget {
+    +set_task(task: Task)
+    +show_context_menu()
+    +open_detail()
+  }
+
+  class LabelFilterBar {
+    +set_labels(labels: list[Label])
+    +set_active(active_label_ids: set[str])
+  }
+
+  class SearchBarWidget {
+    +search_text(): str
+    +clear()
+  }
+}
+
+package "ui.dialogs" {
+  class TaskDialog {
+    +set_task(task: Task)
+    +get_input()
+    +request_delete()
+    +request_duplicate()
+  }
+
+  class CompletedTasksDialog {
+    +load_completed_tasks(tasks: list[Task])
+    +request_restore(task_id: str)
+    +request_delete(task_id: str)
+  }
+
+  class LabelManagerDialog {
+    +load_labels(labels: list[Label])
+    +request_add()
+    +request_update()
+    +request_delete(label_id: str)
+  }
+
+  class StatusManagerDialog {
+    +load_statuses(statuses: list[Status])
+    +request_add()
+    +request_update()
+    +request_delete(status_id: str)
+  }
+
+  class CategoryManagerDialog {
+    +load_categories(categories: list[Category])
+    +request_add()
+    +request_delete(category_id: str)
+  }
+
+  class SettingsDialog {
+    +load_settings(settings: AppSettings)
+    +get_input(): AppSettings
+  }
+}
+
+BoardData *-- "0..*" Category
+BoardData *-- "0..*" Label
+BoardData *-- "0..*" Status
+BoardData *-- "0..*" Task
+BoardData *-- AppSettings
+
+Task --> Category : category_id
+Task --> "0..*" Label : label_ids
+Task --> Status : status_id
+
+BoardStore *-- BoardData
+BoardStore *-- FilterCondition
+
+AppController --> BoardStore
+AppController --> TaskService
+AppController --> CategoryService
+AppController --> LabelService
+AppController --> StatusService
+AppController --> CompletedTaskService
+AppController --> JsonBoardRepository
+
+TaskService --> BoardStore
+TaskService --> DateTimeProvider
+TaskService --> IdProvider
+CategoryService --> BoardStore
+CategoryService --> IdProvider
+LabelService --> BoardStore
+LabelService --> IdProvider
+StatusService --> BoardStore
+CompletedTaskService --> BoardStore
+FilterService --> FilterCondition
+
+BaseCommand --> BoardStore
+BaseCommand --> JsonBoardRepository
+AddTaskCommand --|> BaseCommand
+EditTaskCommand --|> BaseCommand
+DeleteTaskCommand --|> BaseCommand
+DuplicateTaskCommand --|> BaseCommand
+MoveTaskCommand --|> BaseCommand
+ChangeTaskStatusCommand --|> BaseCommand
+
+AddTaskCommand --> TaskService
+EditTaskCommand --> TaskService
+DeleteTaskCommand --> TaskService
+DuplicateTaskCommand --> TaskService
+MoveTaskCommand --> TaskService
+ChangeTaskStatusCommand --> StatusService
+
+BoardRepository <|.. JsonBoardRepository
+JsonBoardRepository --> BoardSerializer
+JsonBoardRepository --> AtomicFileWriter
+JsonBoardRepository --> BackupManager
+BoardSerializer --> BoardData
+
+MainWindow --> AppController
+MainWindow --> BoardStore
+MainWindow *-- BoardWidget
+MainWindow *-- LabelFilterBar
+MainWindow *-- SearchBarWidget
+MainWindow ..> TaskDialog
+MainWindow ..> CompletedTasksDialog
+MainWindow ..> LabelManagerDialog
+MainWindow ..> StatusManagerDialog
+MainWindow ..> CategoryManagerDialog
+MainWindow ..> SettingsDialog
+
+BoardWidget *-- "1..*" CategoryColumnWidget
+CategoryColumnWidget *-- "0..*" TaskCardWidget
+TaskCardWidget --> Task
+TaskDialog --> Task
+CompletedTasksDialog --> BoardStore
+LabelManagerDialog --> Label
+StatusManagerDialog --> Status
+CategoryManagerDialog --> Category
+SettingsDialog --> AppSettings
+
+@enduml
