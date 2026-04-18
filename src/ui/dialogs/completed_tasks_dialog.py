@@ -93,15 +93,15 @@ class CompletedTasksDialog(QDialog):
         return self._action
 
     def _on_restore(self) -> None:
-        if self.selected_task_id() is None:
-            return
-        self._action = "restore"
-        self.accept()
+        self._submit_action("restore")
 
     def _on_delete(self) -> None:
+        self._submit_action("delete")
+
+    def _submit_action(self, action: str) -> None:
         if self.selected_task_id() is None:
             return
-        self._action = "delete"
+        self._action = action
         self.accept()
 
     def _rebuild_table(self) -> None:
@@ -129,4 +129,3 @@ class CompletedTasksDialog(QDialog):
             self._table.setItem(row, 3, QTableWidgetItem(due_text))
             self._table.setItem(row, 4, QTableWidgetItem(completed_text))
             self._table.setItem(row, 5, QTableWidgetItem(preview))
-

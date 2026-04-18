@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Callable
 
 from PyQt6.QtCore import QPoint
 from PyQt6.QtGui import QAction
@@ -129,7 +130,7 @@ class MainWindow(QMainWindow):
         try:
             if dialog.action == "restore":
                 self._controller.restore_completed_task(task_id)
-            if dialog.action == "delete":
+            elif dialog.action == "delete":
                 self._controller.delete_completed_task(task_id)
         except Exception as exc:
             self._show_error(str(exc))
@@ -288,9 +289,9 @@ class MainWindow(QMainWindow):
         selected = menu.exec(pos)
         if selected is edit_action:
             self.open_task_dialog(task_id)
-        if selected is duplicate_action:
+        elif selected is duplicate_action:
             self._controller.duplicate_task(task_id)
-        if selected is delete_action:
+        elif selected is delete_action:
             self._confirm_and_delete_task(task_id)
 
     def _open_category_context_menu(self, category_id: str, pos: QPoint) -> None:
@@ -305,19 +306,13 @@ class MainWindow(QMainWindow):
             self._on_delete_category(category_id)
 
     def _on_change_status(self, task_id: str, status_id: str) -> None:
-        try:
-            self._controller.change_task_status(task_id, status_id)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(self._controller.change_task_status, task_id, status_id)
 
     def _on_board_reordered(self, moved_task_id: str, snapshot: dict[str, list[str]]) -> None:
         task_id = moved_task_id or self._detect_moved_task_id(snapshot)
         if not task_id:
             return
-        try:
-            self._controller.move_task_by_snapshot(task_id, snapshot)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(self._controller.move_task_by_snapshot, task_id, snapshot)
 
     def _detect_moved_task_id(self, snapshot: dict[str, list[str]]) -> str:
         before = self._store.task_ids_by_category()
@@ -344,28 +339,16 @@ class MainWindow(QMainWindow):
         self._controller.delete_task(task_id)
 
     def _on_add_label(self, name: str, color: str) -> None:
-        try:
-            self._controller.add_label(name, color)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(self._controller.add_label, name, color)
 
     def _on_update_label(self, label_id: str, name: str, color: str) -> None:
-        try:
-            self._controller.update_label(label_id, name, color)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(self._controller.update_label, label_id, name, color)
 
     def _on_delete_label(self, label_id: str) -> None:
-        try:
-            self._controller.delete_label(label_id)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(self._controller.delete_label, label_id)
 
     def _on_add_status(self, name: str, color: str, hides_from_board: bool) -> None:
-        try:
-            self._controller.add_status(name, color, hides_from_board)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(self._controller.add_status, name, color, hides_from_board)
 
     def _on_update_status(
         self,
@@ -374,34 +357,29 @@ class MainWindow(QMainWindow):
         color: str,
         hides_from_board: bool,
     ) -> None:
-        try:
-            self._controller.update_status(status_id, name, color, hides_from_board)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(
+            self._controller.update_status,
+            status_id,
+            name,
+            color,
+            hides_from_board,
+        )
 
     def _on_delete_status(self, status_id: str, replacement_status_id: str) -> None:
-        try:
-            self._controller.delete_status(status_id, replacement_status_id)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(
+            self._controller.delete_status,
+            status_id,
+            replacement_status_id,
+        )
 
     def _on_reorder_statuses(self, ordered_status_ids: list[str]) -> None:
-        try:
-            self._controller.reorder_statuses(ordered_status_ids)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(self._controller.reorder_statuses, ordered_status_ids)
 
     def _on_add_category(self, name: str) -> None:
-        try:
-            self._controller.add_category(name)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(self._controller.add_category, name)
 
     def _on_update_category(self, category_id: str, name: str) -> None:
-        try:
-            self._controller.update_category(category_id, name)
-        except Exception as exc:
-            self._show_error(str(exc))
+        self._run_controller_action(self._controller.update_category, category_id, name)
 
     def _on_delete_category(self, category_id: str) -> None:
         target = self._store.find_category(category_id)
@@ -421,8 +399,11 @@ class MainWindow(QMainWindow):
 
         if is_confirm:
             return
+        self._run_controller_action(self._controller.delete_category, category_id)
+
+    def _run_controller_action(self, action: Callable[..., object], *args: object) -> None:
         try:
-            self._controller.delete_category(category_id)
+            action(*args)
         except Exception as exc:
             self._show_error(str(exc))
 

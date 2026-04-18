@@ -67,11 +67,10 @@ class StatusListWidget(QListWidget):
         self.reordered.emit(self.status_ids())
 
     def status_ids(self) -> list[str]:
-        ids: list[str] = []
-        for row in range(self.count()):
-            item = self.item(row)
-            ids.append(str(item.data(Qt.ItemDataRole.UserRole)))
-        return ids
+        return [
+            str(self.item(row).data(Qt.ItemDataRole.UserRole))
+            for row in range(self.count())
+        ]
 
 
 class StatusManagerDialog(QDialog):
@@ -80,7 +79,7 @@ class StatusManagerDialog(QDialog):
     delete_requested = pyqtSignal(str, str)
     reorder_requested = pyqtSignal(list)
 
-    IMMUTABLE_STATUS_IDS = {"not_started", "completed"}
+    IMMUTABLE_STATUS_IDS = frozenset({"not_started", "completed"})
 
     def __init__(self, parent: QWidget | None = None) -> None:
         super().__init__(parent)
@@ -142,8 +141,7 @@ class StatusManagerDialog(QDialog):
         )
 
     def _on_item_clicked(self, item: QListWidgetItem) -> None:
-        status_id = str(item.data(Qt.ItemDataRole.UserRole))
-        status = self._statuses_by_id.get(status_id)
+        _, status = self._status_from_item(item)
         if status is None:
             return
 
@@ -177,11 +175,7 @@ class StatusManagerDialog(QDialog):
         )
 
     def _on_delete(self) -> None:
-        item = self._list.currentItem()
-        if item is None:
-            return
-        status_id = str(item.data(Qt.ItemDataRole.UserRole))
-        status = self._statuses_by_id.get(status_id)
+        status_id, status = self._status_from_item(self._list.currentItem())
         if status is None:
             return
         if status.is_system:
@@ -194,18 +188,20 @@ class StatusManagerDialog(QDialog):
         self.delete_requested.emit(status_id, replacement_id)
 
     def _on_list_reordered(self, ordered_status_ids: list[str]) -> None:
-        normalized = self._normalized_order_ids(ordered_status_ids)
-        self.reorder_requested.emit(normalized)
+        self.reorder_requested.emit(self._normalized_order_ids(ordered_status_ids))
 
     def _normalized_order_ids(self, ordered_status_ids: list[str]) -> list[str]:
         seen: set[str] = set()
-        movable_ids = [
-            status_id
-            for status_id in ordered_status_ids
-            if status_id not in self.IMMUTABLE_STATUS_IDS
-            and status_id in self._statuses_by_id
-            and not (status_id in seen or seen.add(status_id))
-        ]
+        movable_ids: list[str] = []
+        for status_id in ordered_status_ids:
+            if status_id in self.IMMUTABLE_STATUS_IDS:
+                continue
+            if status_id not in self._statuses_by_id:
+                continue
+            if status_id in seen:
+                continue
+            seen.add(status_id)
+            movable_ids.append(status_id)
 
         result: list[str] = []
         if "not_started" in self._statuses_by_id:
@@ -214,6 +210,12 @@ class StatusManagerDialog(QDialog):
         if "completed" in self._statuses_by_id:
             result.append("completed")
         return result
+
+    def _status_from_item(self, item: QListWidgetItem | None) -> tuple[str, Status | None]:
+        if item is None:
+            return "", None
+        status_id = str(item.data(Qt.ItemDataRole.UserRole))
+        return status_id, self._statuses_by_id.get(status_id)
 
     def _ask_replacement(self, deleting_status_id: str) -> tuple[str | None, bool]:
         rows = [
@@ -233,7 +235,10 @@ class StatusManagerDialog(QDialog):
         )
         if not ok:
             return None, False
-        for status_id, name in rows:
-            if name == selected_name:
-                return status_id, True
-        return None, False
+        replacement_id = next(
+            (status_id for status_id, name in rows if name == selected_name),
+            None,
+        )
+        if replacement_id is None:
+            return None, False
+        return replacement_id, True

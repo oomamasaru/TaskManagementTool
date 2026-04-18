@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from app.board_store import BoardStore
 from app.dto import TaskInputData
 from app.services.category_service import CategoryService
@@ -45,7 +47,7 @@ class AppController:
 
     def add_task(self, input_data: TaskInputData) -> None:
         command = AddTaskCommand(self._store, self._repository, self._task_service, input_data)
-        self._store.undo_stack.push(command)
+        self._push_command(command)
 
     def edit_task(self, task_id: str, input_data: TaskInputData) -> None:
         command = EditTaskCommand(
@@ -55,15 +57,15 @@ class AppController:
             task_id,
             input_data,
         )
-        self._store.undo_stack.push(command)
+        self._push_command(command)
 
     def delete_task(self, task_id: str) -> None:
         command = DeleteTaskCommand(self._store, self._repository, self._task_service, task_id)
-        self._store.undo_stack.push(command)
+        self._push_command(command)
 
     def duplicate_task(self, task_id: str) -> None:
         command = DuplicateTaskCommand(self._store, self._repository, self._task_service, task_id)
-        self._store.undo_stack.push(command)
+        self._push_command(command)
 
     def move_task(self, task_id: str, category_id: str, order: int) -> None:
         before = self._store.task_ids_by_category(include_hidden=True)
@@ -71,7 +73,7 @@ class AppController:
         after = self._store.task_ids_by_category(include_hidden=True)
         self._task_service.apply_order_snapshot(before)
         command = MoveTaskCommand(self._store, self._repository, self._task_service, task_id, after)
-        self._store.undo_stack.push(command)
+        self._push_command(command)
 
     def move_task_by_snapshot(self, task_id: str, snapshot: dict[str, list[str]]) -> None:
         command = MoveTaskCommand(
@@ -81,7 +83,7 @@ class AppController:
             task_id,
             snapshot,
         )
-        self._store.undo_stack.push(command)
+        self._push_command(command)
 
     def change_task_status(self, task_id: str, status_id: str) -> None:
         command = ChangeTaskStatusCommand(
@@ -91,7 +93,7 @@ class AppController:
             task_id,
             status_id,
         )
-        self._store.undo_stack.push(command)
+        self._push_command(command)
 
     def restore_task(self, task_id: str) -> None:
         self.change_task_status(task_id, StatusService.NOT_STARTED_ID)
@@ -107,32 +109,25 @@ class AppController:
         self._store.undo_stack.redo()
 
     def add_category(self, name: str) -> None:
-        self._category_service.add_category(name)
-        self.save()
+        self._call_and_save(self._category_service.add_category, name)
 
     def update_category(self, category_id: str, name: str) -> None:
-        self._category_service.update_category(category_id, name)
-        self.save()
+        self._call_and_save(self._category_service.update_category, category_id, name)
 
     def delete_category(self, category_id: str) -> None:
-        self._category_service.delete_category(category_id)
-        self.save()
+        self._call_and_save(self._category_service.delete_category, category_id)
 
     def add_label(self, name: str, color: str) -> None:
-        self._label_service.add_label(name, color)
-        self.save()
+        self._call_and_save(self._label_service.add_label, name, color)
 
     def update_label(self, label_id: str, name: str, color: str) -> None:
-        self._label_service.update_label(label_id, name, color)
-        self.save()
+        self._call_and_save(self._label_service.update_label, label_id, name, color)
 
     def delete_label(self, label_id: str) -> None:
-        self._label_service.delete_label(label_id)
-        self.save()
+        self._call_and_save(self._label_service.delete_label, label_id)
 
     def add_status(self, name: str, color: str, hides_from_board: bool = False) -> None:
-        self._status_service.add_status(name, color, hides_from_board)
-        self.save()
+        self._call_and_save(self._status_service.add_status, name, color, hides_from_board)
 
     def update_status(
         self,
@@ -141,27 +136,28 @@ class AppController:
         color: str,
         hides_from_board: bool,
     ) -> None:
-        self._status_service.update_status(status_id, name, color, hides_from_board)
-        self.save()
+        self._call_and_save(
+            self._status_service.update_status,
+            status_id,
+            name,
+            color,
+            hides_from_board,
+        )
 
     def delete_status(self, status_id: str, replacement_status_id: str) -> None:
-        self._status_service.delete_status(status_id, replacement_status_id)
-        self.save()
+        self._call_and_save(self._status_service.delete_status, status_id, replacement_status_id)
 
     def reorder_statuses(self, ordered_status_ids: list[str]) -> None:
-        self._status_service.reorder_statuses(ordered_status_ids)
-        self.save()
+        self._call_and_save(self._status_service.reorder_statuses, ordered_status_ids)
 
     def get_completed_tasks(self):
         return self._completed_task_service.get_completed_tasks()
 
     def restore_completed_task(self, task_id: str) -> None:
-        self._completed_task_service.restore_task(task_id)
-        self.save()
+        self._call_and_save(self._completed_task_service.restore_task, task_id)
 
     def delete_completed_task(self, task_id: str) -> None:
-        self._completed_task_service.delete_completed_task(task_id)
-        self.save()
+        self._call_and_save(self._completed_task_service.delete_completed_task, task_id)
 
     def set_filter(
         self,
@@ -178,6 +174,13 @@ class AppController:
 
     def clear_filter(self) -> None:
         self._store.set_filter(FilterCondition())
+
+    def _push_command(self, command: object) -> None:
+        self._store.undo_stack.push(command)
+
+    def _call_and_save(self, action: Callable[..., object], *args: object) -> None:
+        action(*args)
+        self.save()
 
     @property
     def store(self) -> BoardStore:

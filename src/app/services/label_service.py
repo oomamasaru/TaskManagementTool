@@ -61,9 +61,10 @@ class LabelService:
         return label
 
     def _next_sort_order(self) -> int:
-        if not self._store.board_data.labels:
-            return 1
-        return max(label.sort_order for label in self._store.board_data.labels) + 1
+        return max(
+            (label.sort_order for label in self._store.board_data.labels),
+            default=0,
+        ) + 1
 
     def _normalize_sort_order(self) -> None:
         self._store.board_data.labels.sort(key=lambda label: label.sort_order)

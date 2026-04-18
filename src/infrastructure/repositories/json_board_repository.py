@@ -32,31 +32,19 @@ class JsonBoardRepository(BoardRepository):
 
     def load(self) -> BoardData:
         if not self._path.exists():
-            board = default_board_data()
-            board.settings.data_file_path = str(self._path)
-            self.save(board)
-            return board
+            return self._create_and_persist_default_board()
 
         try:
             payload = json.loads(self._path.read_text(encoding="utf-8"))
             board = self._serializer.from_dict(payload)
-            board.settings.data_file_path = str(self._path)
-            self._ensure_required_statuses(board)
-            self._ensure_category(board)
-            return board
+            return self._prepare_loaded_board(board)
         except Exception:
             backup = self._path.with_suffix(f"{self._path.suffix}.bak")
             if backup.exists():
                 payload = json.loads(backup.read_text(encoding="utf-8"))
                 board = self._serializer.from_dict(payload)
-                board.settings.data_file_path = str(self._path)
-                self._ensure_required_statuses(board)
-                self._ensure_category(board)
-                return board
-            board = default_board_data()
-            board.settings.data_file_path = str(self._path)
-            self.save(board)
-            return board
+                return self._prepare_loaded_board(board)
+            return self._create_and_persist_default_board()
 
     def save(self, data: BoardData) -> None:
         data.settings.data_file_path = str(self._path)
@@ -96,6 +84,18 @@ class JsonBoardRepository(BoardRepository):
             return
         board.categories.append(Category(id="cat_a", name="A", sort_order=1))
 
+    def _prepare_loaded_board(self, board: BoardData) -> BoardData:
+        board.settings.data_file_path = str(self._path)
+        self._ensure_required_statuses(board)
+        self._ensure_category(board)
+        return board
+
+    def _create_and_persist_default_board(self) -> BoardData:
+        board = default_board_data()
+        board.settings.data_file_path = str(self._path)
+        self.save(board)
+        return board
+
 
 def default_board_data() -> BoardData:
     return BoardData(
@@ -132,4 +132,3 @@ def default_board_data() -> BoardData:
         ],
         settings=AppSettings(),
     )
-

@@ -71,11 +71,7 @@ class TaskListWidget(QListWidget):
         )
 
     def task_ids(self) -> list[str]:
-        ids: list[str] = []
-        for row in range(self.count()):
-            item = self.item(row)
-            ids.append(str(item.data(Qt.ItemDataRole.UserRole)))
-        return ids
+        return [str(self.item(row).data(Qt.ItemDataRole.UserRole)) for row in range(self.count())]
 
     def task_widget(self, task_id: str) -> TaskCardWidget | None:
         for row in range(self.count()):
@@ -89,12 +85,12 @@ class TaskListWidget(QListWidget):
         return None
 
     def _capture_item_positions(self) -> dict[str, QPoint]:
-        positions: dict[str, QPoint] = {}
-        for row in range(self.count()):
-            item = self.item(row)
-            task_id = str(item.data(Qt.ItemDataRole.UserRole))
-            positions[task_id] = self.visualItemRect(item).topLeft()
-        return positions
+        return {
+            str(self.item(row).data(Qt.ItemDataRole.UserRole)): self.visualItemRect(
+                self.item(row)
+            ).topLeft()
+            for row in range(self.count())
+        }
 
 
 class CategoryColumnWidget(QFrame):

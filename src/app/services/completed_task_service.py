@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.board_store import BoardStore
+from domain.models.task import Task
 from infrastructure.providers.datetime_provider import DateTimeProvider
 
 
@@ -9,10 +10,9 @@ class CompletedTaskService:
         self._store = store
         self._datetime_provider = datetime_provider
 
-    def get_completed_tasks(self):
-        tasks = self._store.get_completed_tasks()
+    def get_completed_tasks(self) -> list[Task]:
         return sorted(
-            tasks,
+            self._store.get_completed_tasks(),
             key=lambda task: task.completed_at.isoformat() if task.completed_at else "",
             reverse=True,
         )

@@ -204,14 +204,7 @@ class LabelSelectorWidget(QWidget):
         self._refresh_selected_view()
 
     def _refresh_selected_view(self) -> None:
-        while self._selected_layout.count():
-            item = self._selected_layout.takeAt(0)
-            if item is None:
-                continue
-            widget = item.widget()
-            if widget is not None:
-                widget.setParent(None)
-                widget.deleteLater()
+        self._clear_layout_widgets(self._selected_layout)
 
         selected_ids = self.selected_label_ids()
         if not selected_ids:
@@ -231,6 +224,17 @@ class LabelSelectorWidget(QWidget):
         if button is None:
             return
         button.setChecked(False)
+
+    def _clear_layout_widgets(self, layout: QLayout) -> None:
+        while layout.count():
+            item = layout.takeAt(0)
+            if item is None:
+                continue
+            widget = item.widget()
+            if widget is None:
+                continue
+            widget.setParent(None)
+            widget.deleteLater()
 
 
 class SelectedLabelChipWidget(QFrame):

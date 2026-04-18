@@ -182,13 +182,13 @@ class TaskService:
 
     def _next_sort_order(self, category_id: str) -> int:
         tasks = [task for task in self._store.board_data.tasks if task.category_id == category_id]
-        if not tasks:
-            return 1
-        return max(task.sort_order for task in tasks) + 1
+        return max((task.sort_order for task in tasks), default=0) + 1
 
     def _normalize_sort_orders(self, category_id: str) -> None:
-        tasks = [task for task in self._store.board_data.tasks if task.category_id == category_id]
-        tasks.sort(key=lambda task: task.sort_order)
+        tasks = sorted(
+            (task for task in self._store.board_data.tasks if task.category_id == category_id),
+            key=lambda task: task.sort_order,
+        )
         for index, task in enumerate(tasks, start=1):
             task.sort_order = index
 

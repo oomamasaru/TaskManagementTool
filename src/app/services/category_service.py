@@ -103,9 +103,10 @@ class CategoryService:
         Returns:
             int: 次のソート順序
         """
-        if not self._store.board_data.categories:
-            return 1
-        return max(category.sort_order for category in self._store.board_data.categories) + 1
+        return max(
+            (category.sort_order for category in self._store.board_data.categories),
+            default=0,
+        ) + 1
 
     def _normalize_sort_order(self) -> None:
         """カテゴリのソート順序を正規化する"""

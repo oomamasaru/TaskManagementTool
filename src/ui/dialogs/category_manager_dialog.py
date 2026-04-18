@@ -114,9 +114,7 @@ class CategoryManagerDialog(QDialog):
 
     def _has_duplicate_name(self, category_id: str, new_name: str) -> bool:
         lower_name = new_name.lower()
-        for current_id, current_name in self._names_by_id.items():
-            if current_id == category_id:
-                continue
-            if current_name.lower() == lower_name:
-                return True
-        return False
+        return any(
+            current_id != category_id and current_name.lower() == lower_name
+            for current_id, current_name in self._names_by_id.items()
+        )

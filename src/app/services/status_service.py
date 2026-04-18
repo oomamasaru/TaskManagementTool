@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.board_store import BoardStore
 from domain.models.status import Status
+from domain.models.task import Task
 from infrastructure.providers.datetime_provider import DateTimeProvider
 from infrastructure.providers.id_provider import IdProvider
 from utils.color_utils import normalize_hex_color
@@ -120,13 +121,13 @@ class StatusService:
         self._store.board_data.statuses = ordered
         self._normalize_status_order()
 
-    def mark_completed(self, task_id: str):
+    def mark_completed(self, task_id: str) -> Task:
         return self.change_status(task_id, self.COMPLETED_ID)
 
-    def restore_to_not_started(self, task_id: str):
+    def restore_to_not_started(self, task_id: str) -> Task:
         return self.change_status(task_id, self.NOT_STARTED_ID)
 
-    def change_status(self, task_id: str, status_id: str):
+    def change_status(self, task_id: str, status_id: str) -> Task:
         status = self._get_status(status_id)
         task = self._get_task(task_id)
         now = self._datetime_provider.now()
@@ -155,9 +156,10 @@ class StatusService:
         return task
 
     def _next_sort_order(self) -> int:
-        if not self._store.board_data.statuses:
-            return 1
-        return max(status.sort_order for status in self._store.board_data.statuses) + 1
+        return max(
+            (status.sort_order for status in self._store.board_data.statuses),
+            default=0,
+        ) + 1
 
     def _normalize_status_order(self) -> None:
         statuses = list(self._store.board_data.statuses)

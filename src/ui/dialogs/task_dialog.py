@@ -170,26 +170,12 @@ class TaskDialog(QDialog):
 
         self._label_selector.set_selected_label_ids(task.label_ids)
 
-        # for index in range(self._label_list.count()):
-        # item = self._label_list.item(index)
-        # label_id = item.data(Qt.ItemDataRole.UserRole)
-        # if label_id in task.label_ids:
-        #     item.setCheckState(Qt.CheckState.Checked)
-        # else:
-        #     item.setCheckState(Qt.CheckState.Unchecked)
-
     def get_input(self) -> TaskInputData:
         title = self._title_edit.text()
         due_date: date | None = None
         if self._due_enabled.isChecked():
             value = self._due_date.date()
             due_date = date(value.year(), value.month(), value.day())
-
-        # label_ids: list[str] = []
-        # for index in range(self._label_list.count()):
-        #     item = self._label_list.item(index)
-        #     if item.checkState() == Qt.CheckState.Checked:
-        #         label_ids.append(str(item.data(Qt.ItemDataRole.UserRole)))
         label_ids = self._label_selector.selected_label_ids()
 
         return TaskInputData(
@@ -239,13 +225,8 @@ class TaskDialog(QDialog):
 
     def _select_color_preset_by_value(self, value: str | None) -> None:
         normalized = normalize_hex_color(value or "", default="")
-        if not normalized:
-            self._set_color_button_selection(None)
-            return
-        if normalized in self._color_buttons:
-            self._set_color_button_selection(normalized)
-            return
-        self._set_color_button_selection(None)
+        selected = normalized if normalized and normalized in self._color_buttons else None
+        self._set_color_button_selection(selected)
 
     def _sync_color_button_selection_from_text(self) -> None:
         self._select_color_preset_by_value(self._color_edit.text())

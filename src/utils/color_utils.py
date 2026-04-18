@@ -70,10 +70,10 @@ def contrast_text_color(
 
 
 def due_state_color(due_state: DueState) -> str:
-    if due_state == DueState.OVERDUE:
-        return DUE_DATE_COLORS["overdue"]
-    if due_state == DueState.TODAY:
-        return DUE_DATE_COLORS["today"]
-    if due_state == DueState.UPCOMING:
-        return DUE_DATE_COLORS["future"]
-    return DUE_DATE_COLORS["none"]
+    colors = {
+        DueState.OVERDUE: DUE_DATE_COLORS["overdue"],
+        DueState.TODAY: DUE_DATE_COLORS["today"],
+        DueState.UPCOMING: DUE_DATE_COLORS["future"],
+        DueState.NONE: DUE_DATE_COLORS["none"],
+    }
+    return colors.get(due_state, DUE_DATE_COLORS["none"])

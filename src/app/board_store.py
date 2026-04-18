@@ -35,9 +35,7 @@ class BoardStore(QObject):
         self.notify_board_changed()
 
     def get_tasks_for_category(self, category_id: str) -> list[Task]:
-        hidden_status_ids = {
-            status.id for status in self.board_data.statuses if status.hides_from_board
-        }
+        hidden_status_ids = self._hidden_status_ids()
         tasks = [
             task
             for task in self.board_data.tasks
@@ -47,9 +45,7 @@ class BoardStore(QObject):
         return sorted(filtered, key=lambda task: task.sort_order)
 
     def get_completed_tasks(self) -> list[Task]:
-        hidden_status_ids = {
-            status.id for status in self.board_data.statuses if status.hides_from_board
-        }
+        hidden_status_ids = self._hidden_status_ids()
         tasks = [task for task in self.board_data.tasks if task.status_id in hidden_status_ids]
         tasks.sort(
             key=lambda task: task.completed_at.isoformat() if task.completed_at else "",
@@ -72,9 +68,7 @@ class BoardStore(QObject):
         self.notify_board_changed()
 
     def task_ids_by_category(self, include_hidden: bool = False) -> dict[str, list[str]]:
-        hidden_status_ids = {
-            status.id for status in self.board_data.statuses if status.hides_from_board
-        }
+        hidden_status_ids = self._hidden_status_ids()
         result: dict[str, list[str]] = {}
         for category in self.get_categories():
             tasks = [
@@ -108,6 +102,9 @@ class BoardStore(QObject):
             msg = f"Task not found: {task_id}"
             raise ValueError(msg)
         return deepcopy(task)
+
+    def _hidden_status_ids(self) -> set[str]:
+        return {status.id for status in self.board_data.statuses if status.hides_from_board}
 
     def _matches_filter(self, task: Task) -> bool:
         condition = self.filter_condition

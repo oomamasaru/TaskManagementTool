@@ -89,21 +89,7 @@ class LabelFilterBar(QWidget):
             text_color = contrast_text_color(color)
             border_color = "#111827" if on else "#9CA3AF"
             button.setChecked(on)
-            button.setStyleSheet(
-                f"""
-                QToolButton {{
-                    background:{color};
-                    color:{text_color};
-                    border:1px solid {border_color};
-                    border-radius:10px;
-                    padding:1px 10px;
-                    font-size:8pt;
-                }}
-                QToolButton:hover {{
-                    border:1px solid #374151;
-                }}
-                """
-            )
+            button.setStyleSheet(self._build_chip_stylesheet(color, text_color, border_color))
 
         if self._no_label_button is not None:
             self._no_label_button.setChecked(self._include_no_label)
@@ -113,19 +99,7 @@ class LabelFilterBar(QWidget):
             no_label_text = contrast_text_color(no_label_bg)
             no_label_border = "#111827" if self._include_no_label else "#9CA3AF"
             self._no_label_button.setStyleSheet(
-                f"""
-                QToolButton {{
-                    background:{no_label_bg};
-                    color:{no_label_text};
-                    border:1px solid {no_label_border};
-                    border-radius:10px;
-                    padding:1px 10px;
-                    font-size:8pt;
-                }}
-                QToolButton:hover {{
-                    border:1px solid #374151;
-                }}
-                """
+                self._build_chip_stylesheet(no_label_bg, no_label_text, no_label_border)
             )
 
     def _toggle_label(self, label_id: str) -> None:
@@ -140,3 +114,18 @@ class LabelFilterBar(QWidget):
         self._include_no_label = not self._include_no_label
         self._apply_colors()
         self.changed.emit(set(self._active_label_ids), self._include_no_label)
+
+    def _build_chip_stylesheet(self, bg: str, text: str, border: str) -> str:
+        return f"""
+                QToolButton {{
+                    background:{bg};
+                    color:{text};
+                    border:1px solid {border};
+                    border-radius:10px;
+                    padding:1px 10px;
+                    font-size:8pt;
+                }}
+                QToolButton:hover {{
+                    border:1px solid #374151;
+                }}
+                """
