@@ -95,7 +95,8 @@ class BoardStore(QObject):
 
     def find_category(self, category_id: str) -> Category | None:
         return next(
-            (category for category in self.board_data.categories if category.id == category_id), None
+            (category for category in self.board_data.categories if category.id == category_id),
+            None,
         )
 
     def notify_board_changed(self) -> None:

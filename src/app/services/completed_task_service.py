@@ -33,4 +33,3 @@ class CompletedTaskService:
         self._store.board_data.tasks = [
             current for current in self._store.board_data.tasks if current.id != task_id
         ]
-

@@ -24,11 +24,9 @@ class SettingsDialog(QDialog):
 
         self._data_file_path = QLineEdit()
         self._date_format = QLineEdit()
-        self._redo_shortcut = QLineEdit()
 
         form.addRow("データファイル", self._data_file_path)
         form.addRow("日付表示", self._date_format)
-        form.addRow("Redo ショートカット", self._redo_shortcut)
 
         buttons = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -45,5 +43,4 @@ class SettingsDialog(QDialog):
         return AppSettings(
             data_file_path=self._data_file_path.text().strip() or "task_board.json",
             date_format=self._date_format.text().strip() or "%Y-%m-%d",
-            redo_shortcut=self._redo_shortcut.text().strip() or "Ctrl+Y",
         )

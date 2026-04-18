@@ -25,7 +25,10 @@ class StatusService:
         status_name = name.strip()
         if not status_name:
             raise ValueError("Status name is required.")
-        if any(current.name.lower() == status_name.lower() for current in self._store.board_data.statuses):
+        if any(
+            current.name.lower() == status_name.lower()
+            for current in self._store.board_data.statuses
+        ):
             raise ValueError("Status name already exists.")
 
         status = self._build_status(

@@ -59,7 +59,9 @@ class TaskService:
         task.label_ids = [*input_data.label_ids]
         task.color = input_data.color
         task.detail = input_data.detail
-        task.completed_at = self._updated_completed_at(task.status_id, input_data.status_id, task, now)
+        task.completed_at = self._updated_completed_at(
+            task.status_id, input_data.status_id, task, now
+        )
         task.status_id = input_data.status_id
         task.updated_at = now
 

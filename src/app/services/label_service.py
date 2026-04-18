@@ -69,4 +69,3 @@ class LabelService:
         self._store.board_data.labels.sort(key=lambda label: label.sort_order)
         for index, label in enumerate(self._store.board_data.labels, start=1):
             label.sort_order = index
-
