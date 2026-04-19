@@ -129,6 +129,9 @@ class AppController:
     def delete_category(self, category_id: str) -> None:
         self._call_and_save(self._category_service.delete_category, category_id)
 
+    def reorder_categories(self, ordered_category_ids: list[str]) -> None:
+        self._call_and_save(self._category_service.reorder_categories, ordered_category_ids)
+
     def add_label(self, name: str, color: str) -> None:
         self._call_and_save(self._label_service.add_label, name, color)
 

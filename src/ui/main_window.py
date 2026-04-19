@@ -203,6 +203,7 @@ class MainWindow(QMainWindow):
         dialog.add_requested.connect(self._on_add_category)
         dialog.update_requested.connect(self._on_update_category)
         dialog.delete_requested.connect(self._on_delete_category)
+        dialog.reorder_requested.connect(self._on_reorder_categories)
         self._store.board_changed.connect(refresh)
         try:
             dialog.exec()
@@ -497,6 +498,14 @@ class MainWindow(QMainWindow):
             ordered_status_ids (list[str]): 並び替え後のステータスIDのリスト
         """
         self._run_controller_action(self._controller.reorder_statuses, ordered_status_ids)
+
+    def _on_reorder_categories(self, ordered_category_ids: list[str]) -> None:
+        """カテゴリ再オーダーハンドラ
+
+        Args:
+            ordered_category_ids (list[str]): 並び替え後のカテゴリIDのリスト
+        """
+        self._run_controller_action(self._controller.reorder_categories, ordered_category_ids)
 
     def _on_add_category(self, name: str) -> None:
         """カテゴリ追加ハンドラ

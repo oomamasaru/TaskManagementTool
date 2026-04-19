@@ -94,6 +94,8 @@ class CategoryService:
             if category is not None:
                 ordered.append(category)
         ordered.extend(mapping.values())
+        for index, category in enumerate(ordered, start=1):
+            category.sort_order = index
         self._store.board_data.categories = ordered
         self._normalize_sort_order()
 
