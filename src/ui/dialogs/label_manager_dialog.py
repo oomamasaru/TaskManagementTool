@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QHBoxLayout,
     QListWidget,
@@ -17,82 +18,90 @@ from ui.widgets.label_card_widget import LabelCardWidget
 from utils.color_utils import TASK_LABEL_COLORS
 
 
+class _LabelListItemWidget(QWidget):
+    """ラベル一覧の1行表示ウィジェット。"""
+
+    def __init__(self, label: Label, parent: QWidget | None = None) -> None:
+        super().__init__(parent)
+        self.checkbox = QCheckBox(self)
+        self.checkbox.setCursor(Qt.CursorShape.PointingHandCursor)
+        card = LabelCardWidget(label, self)
+
+        row = QHBoxLayout(self)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+        row.addWidget(self.checkbox, alignment=Qt.AlignmentFlag.AlignVCenter)
+        row.addWidget(card, stretch=1)
+
+
 class LabelManagerDialog(QDialog):
-    """ラベル管理ダイアログ"""
+    """ラベル管理ダイアログ。"""
 
     add_requested = pyqtSignal(str, str)
-    """
-    追加リクエスト
-
-    Args:
-        name (str): 名前
-        color (str): 色
-    """
     update_requested = pyqtSignal(str, str, str)
-    """
-    更新リクエスト
-
-    Args:
-        label_id (str): ラベルID
-        name (str): 名前
-        color (str): 色
-    """
     delete_requested = pyqtSignal(str)
-    """
-    削除リクエスト
-
-    Args:
-        label_id (str): ラベルID
-    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
-        """イニシャライザ
-
-        Args:
-            parent (QWidget | None): 親ウィジェット
-        """
+        """初期化する。"""
         super().__init__(parent)
         self.setWindowTitle("ラベル管理")
         self.resize(500, 420)
+
         self._labels_by_id: dict[str, Label] = {}
+        self._checked_label_ids: set[str] = set()
 
         root = QVBoxLayout(self)
         self._list = QListWidget()
         self._list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
-        self._list.itemClicked.connect(self._on_item_clicked)
+        self._list.itemDoubleClicked.connect(self._on_item_double_clicked)
         root.addWidget(self._list)
 
         row = QHBoxLayout()
         add_button = QPushButton("追加")
-        delete_button = QPushButton("削除")
+        self._delete_button = QPushButton("削除")
+        self._delete_button.setEnabled(False)
         close_button = QPushButton("閉じる")
+
         add_button.clicked.connect(self._on_add)
-        delete_button.clicked.connect(self._on_delete)
+        self._delete_button.clicked.connect(self._on_delete)
         close_button.clicked.connect(self.accept)
+
         row.addWidget(add_button)
-        row.addWidget(delete_button)
+        row.addWidget(self._delete_button)
         row.addStretch(1)
         row.addWidget(close_button)
         root.addLayout(row)
 
     def load_labels(self, labels: list[Label]) -> None:
-        """ラベルを読み込む
-
-        Args:
-            labels (list[Label]): ラベルのリスト
-        """
+        """ラベル一覧を読み込む。"""
+        previous_checked_ids = set(self._checked_label_ids)
         self._labels_by_id = {label.id: label for label in labels}
+        self._checked_label_ids.clear()
         self._list.clear()
-        for label in sorted(labels, key=lambda item: item.sort_order):
+
+        for label in sorted(labels, key=lambda each: each.sort_order):
             item = QListWidgetItem()
             item.setData(Qt.ItemDataRole.UserRole, label.id)
-            card = LabelCardWidget(label)
-            item.setSizeHint(card.sizeHint())
+
+            row_widget = _LabelListItemWidget(label, self._list)
+            checked = label.id in previous_checked_ids
+            row_widget.checkbox.setChecked(checked)
+            if checked:
+                self._checked_label_ids.add(label.id)
+            row_widget.checkbox.toggled.connect(
+                lambda is_checked, label_id=label.id: self._on_toggle_checked(
+                    label_id,
+                    is_checked,
+                )
+            )
+
+            item.setSizeHint(row_widget.sizeHint())
             self._list.addItem(item)
-            self._list.setItemWidget(item, card)
+            self._list.setItemWidget(item, row_widget)
+
+        self._sync_delete_button_state()
 
     def _on_add(self) -> None:
-        """追加ボタンが押されたときの処理"""
         dialog = ColorSelectDialog(
             title="ラベル追加",
             presets=TASK_LABEL_COLORS,
@@ -106,8 +115,7 @@ class LabelManagerDialog(QDialog):
             return
         self.add_requested.emit(dialog.selected_name(), dialog.selected_color())
 
-    def _on_item_clicked(self, item: QListWidgetItem) -> None:
-        """アイテムがクリックされたときの処理"""
+    def _on_item_double_clicked(self, item: QListWidgetItem) -> None:
         label_id = str(item.data(Qt.ItemDataRole.UserRole))
         label = self._labels_by_id.get(label_id)
         if label is None:
@@ -126,10 +134,24 @@ class LabelManagerDialog(QDialog):
             return
         self.update_requested.emit(label.id, dialog.selected_name(), dialog.selected_color())
 
+    def _on_toggle_checked(self, label_id: str, checked: bool) -> None:
+        if checked:
+            self._checked_label_ids.add(label_id)
+        else:
+            self._checked_label_ids.discard(label_id)
+        self._sync_delete_button_state()
+
     def _on_delete(self) -> None:
-        """削除ボタンが押されたときの処理"""
-        item = self._list.currentItem()
-        if item is None:
+        if not self._checked_label_ids:
             return
-        label_id = str(item.data(Qt.ItemDataRole.UserRole))
-        self.delete_requested.emit(label_id)
+
+        target_ids = [
+            label.id
+            for label in sorted(self._labels_by_id.values(), key=lambda each: each.sort_order)
+            if label.id in self._checked_label_ids
+        ]
+        for label_id in target_ids:
+            self.delete_requested.emit(label_id)
+
+    def _sync_delete_button_state(self) -> None:
+        self._delete_button.setEnabled(bool(self._checked_label_ids))
