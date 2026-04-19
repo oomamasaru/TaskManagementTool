@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -15,8 +16,6 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QListWidget,
-    QListWidgetItem,
     QPushButton,
     QTextEdit,
     QVBoxLayout,
@@ -29,6 +28,7 @@ from domain.models.status import Status
 from domain.models.task import Task
 from ui.widgets.label_selector_widget import LabelSelectorWidget
 from utils.color_utils import TASK_LABEL_COLORS, normalize_hex_color
+from utils.debug_trace import trace_debug
 
 
 class TaskDialog(QDialog):
@@ -58,6 +58,11 @@ class TaskDialog(QDialog):
         self._task = task
         self._category_id = task.category_id if task is not None else (default_category_id or "")
         self._action = "save"
+        trace_debug(
+            "TaskDialog:init "
+            f"id={id(self)} task_id={task.id if task is not None else None} "
+            f"default_category_id={default_category_id}"
+        )
 
         root = QVBoxLayout(self)
         form = QFormLayout()
@@ -125,15 +130,14 @@ class TaskDialog(QDialog):
         self._detail_edit.setMinimumHeight(120)
         form.addRow("詳細", self._detail_edit)
 
-        root.addWidget(QLabel("ラベル"))
-        self._label_list = QListWidget()
-        for label in labels:
-            item = QListWidgetItem(label.name)
-            item.setData(Qt.ItemDataRole.UserRole, label.id)
-            item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-            item.setCheckState(Qt.CheckState.Unchecked)
-            self._label_list.addItem(item)
-        self._label_list.setMinimumHeight(120)
+        label_header = QHBoxLayout()
+        label_header.addWidget(QLabel("ラベル"))
+        label_header.addStretch(1)
+        self._open_label_manager_button = QPushButton("ラベル管理")
+        self._open_label_manager_button.clicked.connect(self._on_open_label_manager)
+        label_header.addWidget(self._open_label_manager_button)
+        root.addLayout(label_header)
+
         self._label_selector = LabelSelectorWidget(labels)
         root.addWidget(self._label_selector)
 
@@ -208,6 +212,39 @@ class TaskDialog(QDialog):
             status_id=str(self._status_combo.currentData()),
         )
 
+    def set_labels(self, labels: list[Label]) -> None:
+        """ラベル一覧を再設定する。
+
+        Args:
+            labels (list[Label]): ラベル一覧
+        """
+        self._label_selector.set_labels(labels)
+
+    def set_input(self, input_data: TaskInputData) -> None:
+        """入力値をフォームへ復元する。
+
+        Args:
+            input_data (TaskInputData): 復元する入力値
+        """
+        self._title_edit.setText(input_data.title)
+        self._detail_edit.setPlainText(input_data.detail)
+        self._color_edit.setText(input_data.color or "")
+        self._sync_color_button_selection_from_text()
+        self._category_id = input_data.category_id
+        self._select_combo_data(self._status_combo, input_data.status_id)
+        if input_data.due_date is None:
+            self._due_enabled.setChecked(False)
+        else:
+            self._due_enabled.setChecked(True)
+            self._due_date.setDate(
+                QDate(
+                    input_data.due_date.year,
+                    input_data.due_date.month,
+                    input_data.due_date.day,
+                )
+            )
+        self._label_selector.set_selected_label_ids(input_data.label_ids)
+
     def request_delete(self) -> bool:
         """削除をリクエストしたか
 
@@ -224,6 +261,10 @@ class TaskDialog(QDialog):
         """
         return self._action == "duplicate"
 
+    def request_manage_labels(self) -> bool:
+        """ラベル管理画面を開く要求かどうかを返す。"""
+        return self._action == "manage_labels"
+
     def _select_combo_data(self, combo: QComboBox, data: str) -> None:
         """コンボボックスのデータを設定する
 
@@ -238,17 +279,39 @@ class TaskDialog(QDialog):
     def _on_save(self) -> None:
         """保存ボタンがクリックされたときのハンドラ"""
         self._action = "save"
+        trace_debug(f"TaskDialog:_on_save id={id(self)}")
         self.accept()
 
     def _on_delete(self) -> None:
         """削除ボタンがクリックされたときのハンドラ"""
         self._action = "delete"
+        trace_debug(f"TaskDialog:_on_delete id={id(self)}")
         self.accept()
 
     def _on_duplicate(self) -> None:
         """複製ボタンがクリックされたときのハンドラ"""
         self._action = "duplicate"
+        trace_debug(f"TaskDialog:_on_duplicate id={id(self)}")
         self.accept()
+
+    def _on_open_label_manager(self) -> None:
+        """ラベル管理ボタンがクリックされたときのハンドラ。"""
+        trace_debug(f"TaskDialog:_on_open_label_manager id={id(self)}")
+        self._action = "manage_labels"
+        self.reject()
+
+    def done(self, result: int) -> None:
+        """終了時に結果を記録する。"""
+        trace_debug(
+            f"TaskDialog:done id={id(self)} result={result} "
+            f"action={self._action} visible={self.isVisible()}"
+        )
+        super().done(result)
+
+    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        """クローズイベント時のログを記録する。"""
+        trace_debug(f"TaskDialog:closeEvent id={id(self)}")
+        super().closeEvent(event)
 
     def _on_color_button_clicked(self, color: str) -> None:
         """カラーボタンがクリックされたときのハンドラ

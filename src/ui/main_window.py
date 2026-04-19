@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import contextlib
 from collections.abc import Callable
+from functools import partial
 
-from PyQt6.QtCore import QPoint
+from PyQt6.QtCore import QPoint, QTimer
 from PyQt6.QtGui import QAction, QCloseEvent
 from PyQt6.QtWidgets import (
     QMainWindow,
@@ -15,6 +16,7 @@ from PyQt6.QtWidgets import (
 )
 
 from app.app_controller import AppController
+from app.dto import TaskInputData
 from ui.dialogs.category_manager_dialog import CategoryManagerDialog
 from ui.dialogs.completed_tasks_dialog import CompletedTasksDialog
 from ui.dialogs.label_manager_dialog import LabelManagerDialog
@@ -24,6 +26,7 @@ from ui.dialogs.task_dialog import TaskDialog
 from ui.widgets.board_widget import BoardWidget
 from ui.widgets.label_filter_bar import LabelFilterBar
 from ui.widgets.search_bar_widget import SearchBarWidget
+from utils.debug_trace import trace_debug
 
 
 class MainWindow(QMainWindow):
@@ -61,14 +64,16 @@ class MainWindow(QMainWindow):
         layout.addWidget(self._completed_button)
 
         self._board_widget = BoardWidget()
-        self._board_widget.add_task_requested.connect(self._open_add_task_dialog_for_category)
-        self._board_widget.task_open_requested.connect(self.open_task_dialog)
+        self._board_widget.add_task_requested.connect(self._queue_open_add_task_dialog)
+        self._board_widget.task_open_requested.connect(self._queue_open_task_dialog)
         self._board_widget.task_context_requested.connect(self._open_task_context_menu)
         self._board_widget.category_context_requested.connect(self._open_category_context_menu)
         self._board_widget.board_reordered.connect(self._on_board_reordered)
         layout.addWidget(self._board_widget, stretch=1)
 
         self._create_menu()
+        trace_debug(f"MainWindow:init id={id(self)}")
+        self._task_dialog_keepalive: list[TaskDialog] = []
 
         self._store.board_changed.connect(self.refresh_view)
         self._store.undo_stack.canUndoChanged.connect(self._sync_undo_redo_state)
@@ -86,43 +91,72 @@ class MainWindow(QMainWindow):
             task_id (str | None): タスクID
             default_category_id (str | None): デフォルトカテゴリID
         """
-        categories = self._store.get_categories()
-        labels = self._store.get_labels()
-        statuses = self._store.get_statuses()
-        task = self._store.find_task(task_id) if task_id else None
-        resolved_category_id = (
-            task.category_id
-            if task
-            else (default_category_id or (categories[0].id if categories else None))
+        trace_debug(
+            "MainWindow:open_task_dialog:start "
+            f"task_id={task_id} default_category_id={default_category_id}"
         )
-        if task is None and not resolved_category_id:
-            self._show_error("カテゴリがありません。先にカテゴリを追加してください。")
-            return
-
-        dialog = TaskDialog(
-            labels=labels,
-            statuses=statuses,
-            task=task,
-            default_category_id=resolved_category_id,
-            parent=self,
-        )
-        if dialog.exec() == dialog.DialogCode.Rejected:
-            return
-
-        try:
-            if task and dialog.request_delete():
-                self._confirm_and_delete_task(task.id)
+        draft_input: TaskInputData | None = None
+        while True:
+            categories = self._store.get_categories()
+            labels = self._store.get_labels()
+            statuses = self._store.get_statuses()
+            task = self._store.find_task(task_id) if task_id else None
+            resolved_category_id = (
+                task.category_id
+                if task
+                else (default_category_id or (categories[0].id if categories else None))
+            )
+            if task is None and not resolved_category_id:
+                self._show_error("カテゴリがありません。先にカテゴリを追加してください。")
+                trace_debug("MainWindow:open_task_dialog:abort no category")
                 return
-            if task and dialog.request_duplicate():
-                self._controller.duplicate_task(task.id)
+
+            dialog = TaskDialog(
+                labels=labels,
+                statuses=statuses,
+                task=task,
+                default_category_id=resolved_category_id,
+                parent=None,
+            )
+            if draft_input is not None:
+                dialog.set_input(draft_input)
+
+            trace_debug(f"MainWindow:open_task_dialog:exec id={id(dialog)}")
+            exec_result = dialog.exec()
+            trace_debug(f"MainWindow:open_task_dialog:exec_result={exec_result} id={id(dialog)}")
+            if exec_result == dialog.DialogCode.Rejected:
+                if dialog.request_manage_labels():
+                    trace_debug("MainWindow:open_task_dialog:action manage_labels")
+                    draft_input = dialog.get_input()
+                    self._keep_task_dialog(dialog)
+                    self.open_label_manager_dialog()
+                    continue
+                self._keep_task_dialog(dialog)
                 return
-            input_data = dialog.get_input()
-            if task is None:
-                self._controller.add_task(input_data)
-            else:
-                self._controller.edit_task(task.id, input_data)
-        except Exception as exc:
-            self._show_error(str(exc))
+
+            try:
+                if task and dialog.request_delete():
+                    trace_debug("MainWindow:open_task_dialog:action delete")
+                    self._confirm_and_delete_task(task.id)
+                    self._keep_task_dialog(dialog)
+                    return
+                if task and dialog.request_duplicate():
+                    trace_debug("MainWindow:open_task_dialog:action duplicate")
+                    self._controller.duplicate_task(task.id)
+                    self._keep_task_dialog(dialog)
+                    return
+                input_data = dialog.get_input()
+                if task is None:
+                    trace_debug("MainWindow:open_task_dialog:action add")
+                    self._controller.add_task(input_data)
+                else:
+                    trace_debug("MainWindow:open_task_dialog:action edit")
+                    self._controller.edit_task(task.id, input_data)
+            except Exception as exc:
+                trace_debug(f"MainWindow:open_task_dialog:error {exc}")
+                self._show_error(str(exc))
+            self._keep_task_dialog(dialog)
+            return
 
     def _open_add_task_dialog_for_category(self, category_id: str) -> None:
         """カテゴリごとのタスクダイアログを開く
@@ -131,6 +165,17 @@ class MainWindow(QMainWindow):
             category_id (str): カテゴリID
         """
         self.open_task_dialog(default_category_id=category_id)
+
+    def _queue_open_task_dialog(self, task_id: str) -> None:
+        """タスクダイアログの表示をイベントキュー経由で行う。"""
+        trace_debug(f"MainWindow:_queue_open_task_dialog task_id={task_id}")
+        # ボード側シグナルの同期コールスタックを抜けてからモーダルループへ入る。
+        QTimer.singleShot(0, partial(self.open_task_dialog, task_id=task_id))
+
+    def _queue_open_add_task_dialog(self, category_id: str) -> None:
+        """新規タスクダイアログの表示をイベントキュー経由で行う。"""
+        trace_debug(f"MainWindow:_queue_open_add_task_dialog category_id={category_id}")
+        QTimer.singleShot(0, partial(self._open_add_task_dialog_for_category, category_id))
 
     def open_completed_tasks_dialog(self) -> None:
         """完了済みタスクダイアログを開く"""
@@ -156,9 +201,21 @@ class MainWindow(QMainWindow):
 
     def open_label_manager_dialog(self) -> None:
         """ラベルマネージャーダイアログを開く"""
-        dialog = LabelManagerDialog(self)
+        trace_debug("MainWindow:open_label_manager_dialog:start from menu")
+        dialog = LabelManagerDialog(None)
+        cleanup = self._setup_label_manager_dialog(dialog)
+        try:
+            dialog.exec()
+        finally:
+            cleanup()
+            trace_debug("MainWindow:open_label_manager_dialog:finished")
+
+    def _setup_label_manager_dialog(self, dialog: LabelManagerDialog) -> Callable[[], None]:
+        """ラベルマネージャーダイアログのイベント接続を設定する。"""
+        trace_debug(f"MainWindow:_setup_label_manager_dialog id={id(dialog)}")
 
         def refresh() -> None:
+            trace_debug(f"MainWindow:label_manager:refresh id={id(dialog)}")
             dialog.load_labels(self._store.get_labels())
 
         refresh()
@@ -166,11 +223,20 @@ class MainWindow(QMainWindow):
         dialog.update_requested.connect(self._on_update_label)
         dialog.delete_requested.connect(self._on_delete_label)
         self._store.board_changed.connect(refresh)
-        try:
-            dialog.exec()
-        finally:
-            with contextlib.suppress(TypeError):
+        def cleanup() -> None:
+            trace_debug(f"MainWindow:label_manager:cleanup id={id(dialog)}")
+            with contextlib.suppress(TypeError, RuntimeError):
                 self._store.board_changed.disconnect(refresh)
+
+        return cleanup
+
+    def _keep_task_dialog(self, dialog: TaskDialog) -> None:
+        """タスクダイアログを保持して即時破棄を避ける。"""
+        self._task_dialog_keepalive.append(dialog)
+        trace_debug(
+            "MainWindow:_keep_task_dialog "
+            f"id={id(dialog)} total={len(self._task_dialog_keepalive)}"
+        )
 
     def open_status_manager_dialog(self) -> None:
         """ステータスマネージャーダイアログを開く"""
@@ -282,6 +348,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
         """クローズイベントハンドラ"""
+        trace_debug("MainWindow:closeEvent:start")
         with contextlib.suppress(TypeError, RuntimeError):
             self._store.board_changed.disconnect(self.refresh_view)
         with contextlib.suppress(TypeError, RuntimeError):
@@ -289,6 +356,7 @@ class MainWindow(QMainWindow):
         with contextlib.suppress(TypeError, RuntimeError):
             self._store.undo_stack.canRedoChanged.disconnect(self._sync_undo_redo_state)
         super().closeEvent(event)
+        trace_debug("MainWindow:closeEvent:end")
 
     def _sync_undo_redo_state(self, *_args: object) -> None:
         """アンドゥリドゥ状態を同期する"""
@@ -337,7 +405,7 @@ class MainWindow(QMainWindow):
 
         selected = menu.exec(pos)
         if selected is edit_action:
-            self.open_task_dialog(task_id)
+            self._queue_open_task_dialog(task_id)
         elif selected is duplicate_action:
             self._controller.duplicate_task(task_id)
         elif selected is delete_action:
@@ -556,9 +624,15 @@ class MainWindow(QMainWindow):
             action (Callable[..., object]): コントローラーアクション
             *args (object): アクションの引数
         """
+        trace_debug(
+            "MainWindow:_run_controller_action:start "
+            f"action={getattr(action, '__name__', str(action))} args={args}"
+        )
         try:
             action(*args)
+            trace_debug("MainWindow:_run_controller_action:done")
         except Exception as exc:
+            trace_debug(f"MainWindow:_run_controller_action:error {exc}")
             self._show_error(str(exc))
 
     def _show_error(self, message: str) -> None:

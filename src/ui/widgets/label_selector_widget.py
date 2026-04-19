@@ -18,6 +18,7 @@ from PyQt6.QtWidgets import (
 
 from domain.models.label import Label
 from utils.color_utils import normalize_hex_color
+from utils.debug_trace import trace_debug
 
 
 class FlowLayout(QLayout):
@@ -277,13 +278,37 @@ class LabelSelectorWidget(QWidget):
         self._scroll.setWidget(self._candidate_container)
         root.addWidget(self._scroll)
 
+        self.set_labels(labels)
+
+    def set_labels(self, labels: list[Label]) -> None:
+        """ラベル候補一覧を再設定する。
+
+        Args:
+            labels (list[Label]): ラベル一覧
+        """
+        trace_debug(
+            f"LabelSelectorWidget:set_labels:start id={id(self)} "
+            f"old_count={len(self._buttons_by_id)} new_count={len(labels)}"
+        )
+        previously_selected_ids = set(self.selected_label_ids())
+        self._labels_by_id = {label.id: label for label in labels}
+        self._clear_layout_widgets(self._candidate_layout)
+        self._buttons_by_id.clear()
+
         for label in labels:
             button = LabelChipButton(label)
+            blocker = QSignalBlocker(button)
+            button.setChecked(label.id in previously_selected_ids)
+            del blocker
             button.toggled.connect(self._refresh_selected_view)
             self._buttons_by_id[label.id] = button
             self._candidate_layout.addWidget(button)
 
         self._refresh_selected_view()
+        trace_debug(
+            f"LabelSelectorWidget:set_labels:done id={id(self)} "
+            f"selected_count={len(self.selected_label_ids())}"
+        )
 
     def selected_label_ids(self) -> list[str]:
         """選択済みラベルIDを返します。
@@ -308,6 +333,7 @@ class LabelSelectorWidget(QWidget):
 
     def _refresh_selected_view(self) -> None:
         """選択済みビューを更新する"""
+        trace_debug(f"LabelSelectorWidget:_refresh_selected_view id={id(self)}")
         self._clear_layout_widgets(self._selected_layout)
 
         selected_ids = self.selected_label_ids()
@@ -340,6 +366,8 @@ class LabelSelectorWidget(QWidget):
         Args:
             layout (QLayout): レイアウト
         """
+        trace_debug(f"LabelSelectorWidget:_clear_layout_widgets:start id={id(self)}")
+        removed_count = 0
         while layout.count():
             item = layout.takeAt(0)
             if item is None:
@@ -347,8 +375,12 @@ class LabelSelectorWidget(QWidget):
             widget = item.widget()
             if widget is None:
                 continue
+            widget.hide()
             widget.setParent(None)
-            widget.deleteLater()
+            removed_count += 1
+        trace_debug(
+            f"LabelSelectorWidget:_clear_layout_widgets:done id={id(self)} removed={removed_count}"
+        )
 
 
 class SelectedLabelChipWidget(QFrame):
