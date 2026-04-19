@@ -18,11 +18,39 @@ from utils.color_utils import TASK_LABEL_COLORS
 
 
 class LabelManagerDialog(QDialog):
+    """ラベル管理ダイアログ"""
+
     add_requested = pyqtSignal(str, str)
+    """
+    追加リクエスト
+
+    Args:
+        name (str): 名前
+        color (str): 色
+    """
     update_requested = pyqtSignal(str, str, str)
+    """
+    更新リクエスト
+
+    Args:
+        label_id (str): ラベルID
+        name (str): 名前
+        color (str): 色
+    """
     delete_requested = pyqtSignal(str)
+    """
+    削除リクエスト
+
+    Args:
+        label_id (str): ラベルID
+    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self.setWindowTitle("ラベル管理")
         self.resize(500, 420)
@@ -48,6 +76,11 @@ class LabelManagerDialog(QDialog):
         root.addLayout(row)
 
     def load_labels(self, labels: list[Label]) -> None:
+        """ラベルを読み込む
+
+        Args:
+            labels (list[Label]): ラベルのリスト
+        """
         self._labels_by_id = {label.id: label for label in labels}
         self._list.clear()
         for label in sorted(labels, key=lambda item: item.sort_order):
@@ -59,6 +92,7 @@ class LabelManagerDialog(QDialog):
             self._list.setItemWidget(item, card)
 
     def _on_add(self) -> None:
+        """追加ボタンが押されたときの処理"""
         dialog = ColorSelectDialog(
             title="ラベル追加",
             presets=TASK_LABEL_COLORS,
@@ -73,6 +107,7 @@ class LabelManagerDialog(QDialog):
         self.add_requested.emit(dialog.selected_name(), dialog.selected_color())
 
     def _on_item_clicked(self, item: QListWidgetItem) -> None:
+        """アイテムがクリックされたときの処理"""
         label_id = str(item.data(Qt.ItemDataRole.UserRole))
         label = self._labels_by_id.get(label_id)
         if label is None:
@@ -92,6 +127,7 @@ class LabelManagerDialog(QDialog):
         self.update_requested.emit(label.id, dialog.selected_name(), dialog.selected_color())
 
     def _on_delete(self) -> None:
+        """削除ボタンが押されたときの処理"""
         item = self._list.currentItem()
         if item is None:
             return

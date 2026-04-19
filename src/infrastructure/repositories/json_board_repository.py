@@ -14,6 +14,8 @@ from infrastructure.serializers.board_serializer import BoardSerializer
 
 
 class JsonBoardRepository(BoardRepository):
+    """JSONファイルでボードデータを管理するリポジトリ"""
+
     def __init__(
         self,
         path: str | Path,
@@ -21,6 +23,13 @@ class JsonBoardRepository(BoardRepository):
         writer: AtomicFileWriter | None = None,
         backup_manager: BackupManager | None = None,
     ) -> None:
+        """イニシャライザ
+        Args:
+            path (str | Path): データファイルのパス
+            serializer (BoardSerializer | None): ボードシリアライザ
+            writer (AtomicFileWriter | None): アトミックファイルライタ
+            backup_manager (BackupManager | None): バックアップマネージャー
+        """
         self._path = Path(path)
         self._serializer = serializer or BoardSerializer()
         self._writer = writer or AtomicFileWriter()
@@ -28,9 +37,11 @@ class JsonBoardRepository(BoardRepository):
 
     @property
     def path(self) -> Path:
+        """データファイルのパスを返す"""
         return self._path
 
     def load(self) -> BoardData:
+        """ボードデータをロードする"""
         if not self._path.exists():
             return self._create_and_persist_default_board()
 
@@ -47,6 +58,7 @@ class JsonBoardRepository(BoardRepository):
             return self._create_and_persist_default_board()
 
     def save(self, data: BoardData) -> None:
+        """ボードデータを保存する"""
         data.settings.data_file_path = str(self._path)
         self._backup_manager.create_backup(self._path)
         payload = self._serializer.to_dict(data)
@@ -54,6 +66,7 @@ class JsonBoardRepository(BoardRepository):
         self._writer.write(self._path, content)
 
     def _ensure_required_statuses(self, board: BoardData) -> None:
+        """必須ステータスを ensure する"""
         status_ids = {status.id for status in board.statuses}
         if "not_started" not in status_ids:
             board.statuses.append(
@@ -80,17 +93,20 @@ class JsonBoardRepository(BoardRepository):
         board.statuses.sort(key=lambda status: status.sort_order)
 
     def _ensure_category(self, board: BoardData) -> None:
+        """カテゴリを ensure する"""
         if board.categories:
             return
         board.categories.append(Category(id="cat_a", name="A", sort_order=1))
 
     def _prepare_loaded_board(self, board: BoardData) -> BoardData:
+        """ロードしたボードを準備する"""
         board.settings.data_file_path = str(self._path)
         self._ensure_required_statuses(board)
         self._ensure_category(board)
         return board
 
     def _create_and_persist_default_board(self) -> BoardData:
+        """デフォルトボードデータを作成して保存する"""
         board = default_board_data()
         board.settings.data_file_path = str(self._path)
         self.save(board)
@@ -98,6 +114,7 @@ class JsonBoardRepository(BoardRepository):
 
 
 def default_board_data() -> BoardData:
+    """デフォルトボードデータを返す"""
     return BoardData(
         version=1,
         categories=[

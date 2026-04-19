@@ -12,6 +12,7 @@ TASK_LABEL_COLORS = [
     {"id": "brown", "bg": "#E7D3C8", "fg": "#7C2D12"},
     {"id": "gray", "bg": "#E5E7EB", "fg": "#374151"},
 ]
+"""タスクラベル色"""
 
 STATUS_COLORS = [
     {"id": "gray", "main": "#6B7280"},
@@ -21,6 +22,7 @@ STATUS_COLORS = [
     {"id": "red", "main": "#DC2626"},
     {"id": "purple", "main": "#7C3AED"},
 ]
+"""ステータス色"""
 
 DUE_DATE_COLORS = {
     "overdue": "#DC2626",
@@ -28,9 +30,19 @@ DUE_DATE_COLORS = {
     "future": "#6B7280",
     "none": "#9CA3AF",
 }
+"""期限色"""
 
 
 def normalize_hex_color(value: str, default: str = "#E5E7EB") -> str:
+    """ヘキサカラーを正規化する
+
+    Args:
+        value (str): ヘキサカラー
+        default (str, optional): デフォルトカラー Defaults to "#E5E7EB".
+
+    Returns:
+        str: 正規化されたヘキサカラー
+    """
     raw = value.strip()
     if not raw:
         return default
@@ -46,6 +58,15 @@ def normalize_hex_color(value: str, default: str = "#E5E7EB") -> str:
 
 
 def darken_hex_color(value: str, ratio: float = 0.75) -> str:
+    """ヘキサカラーを暗くする
+
+    Args:
+        value (str): ヘキサカラー
+        ratio (float, optional): 暗くする比率 Defaults to 0.75.
+
+    Returns:
+        str: 暗くしたヘキサカラー
+    """
     color = normalize_hex_color(value)
     r = int(color[1:3], 16)
     g = int(color[3:5], 16)
@@ -61,6 +82,16 @@ def contrast_text_color(
     light: str = "#FFFFFF",
     dark: str = "#111827",
 ) -> str:
+    """背景色に対してコントラストの高いテキストカラーを返す
+
+    Args:
+        background (str): 背景色
+        light (str, optional): 明るいテキストカラー Defaults to "#FFFFFF".
+        dark (str, optional): 暗いテキストカラー Defaults to "#111827".
+
+    Returns:
+        str: コントラストの高いテキストカラー
+    """
     color = normalize_hex_color(background)
     r = int(color[1:3], 16)
     g = int(color[3:5], 16)
@@ -70,6 +101,13 @@ def contrast_text_color(
 
 
 def due_state_color(due_state: DueState) -> str:
+    """期限状態に対応する色を返す
+
+    Args:
+        due_state (DueState): 期限状態
+
+    Returns:        str: 期限色
+    """
     colors = {
         DueState.OVERDUE: DUE_DATE_COLORS["overdue"],
         DueState.TODAY: DUE_DATE_COLORS["today"],

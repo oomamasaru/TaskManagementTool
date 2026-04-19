@@ -7,7 +7,15 @@ from utils.color_utils import normalize_hex_color
 
 
 class LabelCardWidget(QFrame):
+    """ラベルカードウィジェット"""
+
     def __init__(self, label: Label, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            label (Label): ラベル
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self.setObjectName("labelCard")
         self.setStyleSheet(

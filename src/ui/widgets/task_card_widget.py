@@ -14,6 +14,8 @@ from utils.date_utils import calc_due_state, calc_remaining_days
 
 
 class TaskCardWidget(QFrame):
+    """タスクカードウィジェット"""
+
     def __init__(
         self,
         task: Task,
@@ -22,6 +24,15 @@ class TaskCardWidget(QFrame):
         date_format: str = "%Y-%m-%d",
         parent: QWidget | None = None,
     ) -> None:
+        """イニシャライザ
+
+        Args:
+            task (Task): タスク
+            status (Status | None): ステータス
+            labels (list[Label]): ラベル
+            date_format (str): 日付フォーマット
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self._task = task
         self._date_format = date_format
@@ -101,9 +112,11 @@ class TaskCardWidget(QFrame):
         )
 
     def set_task(self, task: Task) -> None:
+        """タスクを設定する"""
         self._task = task
 
     def _format_remaining_text(self, remaining_days: int | None) -> str:
+        """残り日数をフォーマットする"""
         if remaining_days is None:
             return "期限なし"
         if remaining_days < 0:
@@ -113,7 +126,9 @@ class TaskCardWidget(QFrame):
         return f"残り{remaining_days}日"
 
     def show_context_menu(self) -> None:
+        """コンテキストメニューを表示する"""
         return
 
     def open_detail(self) -> None:
+        """詳細を表示する"""
         return

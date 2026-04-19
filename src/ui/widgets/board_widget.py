@@ -11,15 +11,55 @@ from ui.widgets.category_column_widget import CategoryColumnWidget
 
 
 class BoardWidget(QWidget):
+    """ボードウィジェット"""
+
     add_task_requested = pyqtSignal(str)
+    """タスク追加リクエストシグナル
+
+    Args:
+        str (str): カテゴリID
+    """
+
     task_open_requested = pyqtSignal(str)
+    """タスクオープンリクエストシグナル
+
+    Args:
+        str (str): タスクID
+    """
+
     task_context_requested = pyqtSignal(str, QPoint)
+    """タスクコンテキストリクエストシグナル
+
+    Args:
+        str (str): タスクID
+        QPoint (QPoint): コンテキストメニューの表示位置
+    """
+
     category_context_requested = pyqtSignal(str, QPoint)
+    """カテゴリコンテキストリクエストシグナル
+
+    Args:
+        str (str): カテゴリID
+        QPoint (QPoint): コンテキストメニューの表示位置
+    """
+
     board_reordered = pyqtSignal(str, dict)
+    """ボード再オーダーシグナル
+
+    Args:
+        str (str): 移動したタスクID
+        dict (dict[str, list[str]]): カテゴリごとのタスクIDのリストの辞書
+    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self._columns: dict[str, CategoryColumnWidget] = {}
+        """カラムの辞書"""
 
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
@@ -41,6 +81,15 @@ class BoardWidget(QWidget):
         labels: dict[str, Label],
         date_format: str,
     ) -> None:
+        """カラムを再構築する
+
+        Args:
+            categories (list[Category]): カテゴリのリスト
+            tasks_by_category (dict[str, list[Task]]): カテゴリごとのタスクのリストの辞書
+            statuses (dict[str, Status]): ステータスの辞書
+            labels (dict[str, Label]): ラベルの辞書
+            date_format (str): 日付のフォーマット
+        """
         while self._layout.count():
             item = self._layout.takeAt(0)
             widget = item.widget()
@@ -66,6 +115,11 @@ class BoardWidget(QWidget):
             self._columns[category.id] = column
 
     def task_ids_by_category(self) -> dict[str, list[str]]:
+        """カテゴリごとのタスクIDのリストの辞書を取得する
+
+        Returns:
+            dict[str, list[str]]: カテゴリIDごとのタスクIDのリストの辞書
+        """
         return {category_id: column.task_ids() for category_id, column in self._columns.items()}
 
     def _on_tasks_reordered(
@@ -74,6 +128,13 @@ class BoardWidget(QWidget):
         moved_task_id: str,
         _ordered_ids: list[str],
     ) -> None:
+        """タスクの並び替えイベントを処理する
+
+        Args:
+            category_id (str): カテゴリID
+            moved_task_id (str): 移動したタスクID
+            _ordered_ids (list[str]): 並び替え後のタスクIDのリスト
+        """
         snapshot = self.task_ids_by_category()
         if moved_task_id:
             # Cross-column drop can momentarily leave the moved task in both source and target

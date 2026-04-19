@@ -32,6 +32,18 @@ class AppController:
         completed_task_service: CompletedTaskService,
         filter_service: FilterService,
     ) -> None:
+        """イニシャライザ
+
+        Args:
+            store (BoardStore): _description_
+            repository (JsonBoardRepository): _description_
+            task_service (TaskService): _description_
+            category_service (CategoryService): _description_
+            label_service (LabelService): _description_
+            status_service (StatusService): _description_
+            completed_task_service (CompletedTaskService): _description_
+            filter_service (FilterService): _description_
+        """
         self._store = store
         self._repository = repository
         self._task_service = task_service

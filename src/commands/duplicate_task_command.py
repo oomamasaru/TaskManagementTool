@@ -5,13 +5,24 @@ from commands.base_command import BaseCommand
 
 
 class DuplicateTaskCommand(BaseCommand):
+    """タスク複製コマンド"""
+
     def __init__(self, store, repository, task_service: TaskService, source_task_id: str) -> None:
+        """イニシャライザ
+
+        Args:
+            store (BoardStore): ボードストア
+            repository (TaskRepository): タスクリポジトリ
+            task_service (TaskService): タスクサービス
+            source_task_id (str): タスクID
+        """
         super().__init__("タスク複製", store, repository)
         self._task_service = task_service
         self._source_task_id = source_task_id
         self._duplicated_task = None
 
     def redo(self) -> None:
+        """コマンドをやり直す"""
         if self._duplicated_task is None:
             self._duplicated_task = self._task_service.duplicate_task(self._source_task_id)
         else:
@@ -19,8 +30,8 @@ class DuplicateTaskCommand(BaseCommand):
         self._save_board()
 
     def undo(self) -> None:
+        """コマンドを取り消す"""
         if self._duplicated_task is None:
             return
         self._task_service.delete_task(self._duplicated_task.id)
         self._save_board()
-

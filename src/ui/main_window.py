@@ -27,7 +27,14 @@ from ui.widgets.search_bar_widget import SearchBarWidget
 
 
 class MainWindow(QMainWindow):
+    """メインウィンドウ"""
+
     def __init__(self, controller: AppController) -> None:
+        """イニシャライザ
+
+        Args:
+            controller (AppController): アプリケーションコントローラー
+        """
         super().__init__()
         self._controller = controller
         self._store = controller.store
@@ -73,6 +80,12 @@ class MainWindow(QMainWindow):
         task_id: str | None = None,
         default_category_id: str | None = None,
     ) -> None:
+        """タスクダイアログを開く
+
+        Args:
+            task_id (str | None): タスクID
+            default_category_id (str | None): デフォルトカテゴリID
+        """
         categories = self._store.get_categories()
         labels = self._store.get_labels()
         statuses = self._store.get_statuses()
@@ -112,9 +125,15 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
 
     def _open_add_task_dialog_for_category(self, category_id: str) -> None:
+        """カテゴリごとのタスクダイアログを開く
+
+        Args:
+            category_id (str): カテゴリID
+        """
         self.open_task_dialog(default_category_id=category_id)
 
     def open_completed_tasks_dialog(self) -> None:
+        """完了済みタスクダイアログを開く"""
         dialog = CompletedTasksDialog(self)
         dialog.load_completed_tasks(
             tasks=self._controller.get_completed_tasks(),
@@ -136,6 +155,7 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
 
     def open_label_manager_dialog(self) -> None:
+        """ラベルマネージャーダイアログを開く"""
         dialog = LabelManagerDialog(self)
 
         def refresh() -> None:
@@ -153,9 +173,11 @@ class MainWindow(QMainWindow):
                 self._store.board_changed.disconnect(refresh)
 
     def open_status_manager_dialog(self) -> None:
+        """ステータスマネージャーダイアログを開く"""
         dialog = StatusManagerDialog(self)
 
         def refresh() -> None:
+            """リフレッシュ"""
             dialog.load_statuses(self._store.get_statuses())
 
         refresh()
@@ -171,6 +193,7 @@ class MainWindow(QMainWindow):
                 self._store.board_changed.disconnect(refresh)
 
     def open_category_manager_dialog(self) -> None:
+        """カテゴリマネージャーダイアログを開く"""
         dialog = CategoryManagerDialog(self)
 
         def refresh() -> None:
@@ -188,6 +211,7 @@ class MainWindow(QMainWindow):
                 self._store.board_changed.disconnect(refresh)
 
     def open_settings_dialog(self) -> None:
+        """設定ダイアログを開く"""
         dialog = SettingsDialog(self)
         dialog.load_settings(self._store.board_data.settings)
         if dialog.exec() == dialog.DialogCode.Rejected:
@@ -200,6 +224,7 @@ class MainWindow(QMainWindow):
             self._show_error(str(exc))
 
     def refresh_view(self) -> None:
+        """ビューをリフレッシュする"""
         categories = self._store.get_categories()
         labels = self._store.get_labels()
         statuses = self._store.get_statuses()
@@ -223,6 +248,7 @@ class MainWindow(QMainWindow):
         self._sync_undo_redo_state()
 
     def _create_menu(self) -> None:
+        """メニューを作成する"""
         menu_bar = self.menuBar()
         manage_menu = menu_bar.addMenu("管理")
         edit_menu = menu_bar.addMenu("編集")
@@ -254,6 +280,7 @@ class MainWindow(QMainWindow):
         edit_menu.addAction(self._redo_action)
 
     def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
+        """クローズイベントハンドラ"""
         with contextlib.suppress(TypeError, RuntimeError):
             self._store.board_changed.disconnect(self.refresh_view)
         with contextlib.suppress(TypeError, RuntimeError):
@@ -263,6 +290,7 @@ class MainWindow(QMainWindow):
         super().closeEvent(event)
 
     def _sync_undo_redo_state(self, *_args: object) -> None:
+        """アンドゥリドゥ状態を同期する"""
         try:
             self._undo_action.setEnabled(self._store.undo_stack.canUndo())
             self._redo_action.setEnabled(self._store.undo_stack.canRedo())
@@ -270,7 +298,8 @@ class MainWindow(QMainWindow):
             # Window teardown can outlive QUndoStack (C++ object), so ignore late signal calls.
             return
 
-    def _on_filter_changed(self, *_args) -> None:
+    def _on_filter_changed(self, *_args: object) -> None:
+        """フィルター変更ハンドラ"""
         self._controller.set_filter(
             search_text=self._search_bar.search_text(),
             active_label_ids=self._label_filter_bar.active_label_ids(),
@@ -278,6 +307,12 @@ class MainWindow(QMainWindow):
         )
 
     def _open_task_context_menu(self, task_id: str, pos: QPoint) -> None:
+        """タスクコンテキストメニューを開く
+
+        Args:
+            task_id (str): タスクID
+            pos (QPoint): マウスカーソル位置
+        """
         task = self._store.find_task(task_id)
         if task is None:
             return
@@ -308,6 +343,12 @@ class MainWindow(QMainWindow):
             self._confirm_and_delete_task(task_id)
 
     def _open_category_context_menu(self, category_id: str, pos: QPoint) -> None:
+        """カテゴリコンテキストメニューを開く
+
+        Args:
+            category_id (str): カテゴリID
+            pos (QPoint): マウスカーソル位置
+        """
         category = self._store.find_category(category_id)
         if category is None:
             return
@@ -319,15 +360,35 @@ class MainWindow(QMainWindow):
             self._on_delete_category(category_id)
 
     def _on_change_status(self, task_id: str, status_id: str) -> None:
+        """ステータス変更ハンドラ
+
+        Args:
+            task_id (str): タスクID
+            status_id (str): ステータスID
+        """
         self._run_controller_action(self._controller.change_task_status, task_id, status_id)
 
     def _on_board_reordered(self, moved_task_id: str, snapshot: dict[str, list[str]]) -> None:
+        """ボード再配置ハンドラ
+
+        Args:
+            moved_task_id (str): 移動したタスクID
+            snapshot (dict[str, list[str]]): 移動前のタスク配置スナップショット
+        """
         task_id = moved_task_id or self._detect_moved_task_id(snapshot)
         if not task_id:
             return
         self._run_controller_action(self._controller.move_task_by_snapshot, task_id, snapshot)
 
     def _detect_moved_task_id(self, snapshot: dict[str, list[str]]) -> str:
+        """移動したタスクIDを検出する
+
+        Args:
+            snapshot (dict[str, list[str]]): 移動前のタスク配置スナップショット
+
+        Returns:
+            str: 移動したタスクID
+        """
         before = self._store.task_ids_by_category()
         for category_id, after_ids in snapshot.items():
             before_ids = before.get(category_id, [])
@@ -341,6 +402,11 @@ class MainWindow(QMainWindow):
         return ""
 
     def _confirm_and_delete_task(self, task_id: str) -> None:
+        """確認してタスクを削除する
+
+        Args:
+            task_id (str): タスクID
+        """
         answer = QMessageBox.question(
             self,
             "確認",
@@ -352,15 +418,40 @@ class MainWindow(QMainWindow):
         self._controller.delete_task(task_id)
 
     def _on_add_label(self, name: str, color: str) -> None:
+        """ラベル追加ハンドラ
+
+        Args:
+            name (str): ラベル名
+            color (str): ラベルカラー
+        """
         self._run_controller_action(self._controller.add_label, name, color)
 
     def _on_update_label(self, label_id: str, name: str, color: str) -> None:
+        """ラベル更新ハンドラ
+
+        Args:
+            label_id (str): ラベルID
+            name (str): ラベル名
+            color (str): ラベルカラー
+        """
         self._run_controller_action(self._controller.update_label, label_id, name, color)
 
     def _on_delete_label(self, label_id: str) -> None:
+        """ラベル削除ハンドラ
+
+        Args:
+            label_id (str): ラベルID
+        """
         self._run_controller_action(self._controller.delete_label, label_id)
 
     def _on_add_status(self, name: str, color: str, hides_from_board: bool) -> None:
+        """ステータス追加ハンドラ
+
+        Args:
+            name (str): ステータス名
+            color (str): ステータスカラー
+            hides_from_board (bool): ボードに表示するかどうか
+        """
         self._run_controller_action(self._controller.add_status, name, color, hides_from_board)
 
     def _on_update_status(
@@ -370,6 +461,14 @@ class MainWindow(QMainWindow):
         color: str,
         hides_from_board: bool,
     ) -> None:
+        """ステータス更新ハンドラ
+
+        Args:
+            status_id (str): ステータスID
+            name (str): ステータス名
+            color (str): ステータスカラー
+            hides_from_board (bool): ボードに表示するかどうか
+        """
         self._run_controller_action(
             self._controller.update_status,
             status_id,
@@ -379,6 +478,12 @@ class MainWindow(QMainWindow):
         )
 
     def _on_delete_status(self, status_id: str, replacement_status_id: str) -> None:
+        """ステータス削除ハンドラ
+
+        Args:
+            status_id (str): ステータスID
+            replacement_status_id (str): 代替ステータスID
+        """
         self._run_controller_action(
             self._controller.delete_status,
             status_id,
@@ -386,15 +491,36 @@ class MainWindow(QMainWindow):
         )
 
     def _on_reorder_statuses(self, ordered_status_ids: list[str]) -> None:
+        """ステータス再オーダーハンドラ
+
+        Args:
+            ordered_status_ids (list[str]): 並び替え後のステータスIDのリスト
+        """
         self._run_controller_action(self._controller.reorder_statuses, ordered_status_ids)
 
     def _on_add_category(self, name: str) -> None:
+        """カテゴリ追加ハンドラ
+
+        Args:
+            name (str): カテゴリ名
+        """
         self._run_controller_action(self._controller.add_category, name)
 
     def _on_update_category(self, category_id: str, name: str) -> None:
+        """カテゴリ更新ハンドラ
+
+        Args:
+            category_id (str): カテゴリID
+            name (str): カテゴリ名
+        """
         self._run_controller_action(self._controller.update_category, category_id, name)
 
     def _on_delete_category(self, category_id: str) -> None:
+        """カテゴリ削除ハンドラ
+
+        Args:
+            category_id (str): カテゴリID
+        """
         target = self._store.find_category(category_id)
         if target is None:
             return
@@ -415,10 +541,21 @@ class MainWindow(QMainWindow):
         self._run_controller_action(self._controller.delete_category, category_id)
 
     def _run_controller_action(self, action: Callable[..., object], *args: object) -> None:
+        """コントローラーアクションを実行する
+
+        Args:
+            action (Callable[..., object]): コントローラーアクション
+            *args (object): アクションの引数
+        """
         try:
             action(*args)
         except Exception as exc:
             self._show_error(str(exc))
 
     def _show_error(self, message: str) -> None:
+        """エラーメッセージを表示する
+
+        Args:
+            message (str): エラーメッセージ
+        """
         QMessageBox.critical(self, "エラー", message)

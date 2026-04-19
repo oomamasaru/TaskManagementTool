@@ -32,6 +32,8 @@ from utils.color_utils import TASK_LABEL_COLORS, normalize_hex_color
 
 
 class TaskDialog(QDialog):
+    """タスクダイアログ"""
+
     def __init__(
         self,
         labels: list[Label],
@@ -40,6 +42,15 @@ class TaskDialog(QDialog):
         default_category_id: str | None = None,
         parent: QWidget | None = None,
     ) -> None:
+        """イニシャライザ
+
+        Args:
+            labels (list[Label]): ラベルリスト
+            statuses (list[Status]): ステータスリスト
+            task (Task | None, optional): タスク. Defaults to None.
+            default_category_id (str | None, optional): デフォルトカテゴリID. Defaults to None.
+            parent (QWidget | None, optional): 親ウィジェット. Defaults to None.
+        """
         super().__init__(parent)
         self.setWindowTitle("タスク")
         self.resize(480, 560)
@@ -67,7 +78,6 @@ class TaskDialog(QDialog):
         due_widget = QWidget()
         due_widget.setLayout(due_row)
         form.addRow("期限", due_widget)
-
 
         self._status_combo = QComboBox()
         for status in statuses:
@@ -152,6 +162,11 @@ class TaskDialog(QDialog):
             self.set_task(task)
 
     def set_task(self, task: Task) -> None:
+        """タスクを設定する
+
+        Args:
+            task (Task): タスク
+        """
         self._task = task
         self._title_edit.setText(task.title)
         self._detail_edit.setPlainText(task.detail)
@@ -171,6 +186,11 @@ class TaskDialog(QDialog):
         self._label_selector.set_selected_label_ids(task.label_ids)
 
     def get_input(self) -> TaskInputData:
+        """入力値を取得する
+
+        Returns:
+            TaskInputData: 入力値
+        """
         title = self._title_edit.text()
         due_date: date | None = None
         if self._due_enabled.isChecked():
@@ -189,33 +209,58 @@ class TaskDialog(QDialog):
         )
 
     def request_delete(self) -> bool:
+        """削除をリクエストしたか
+
+        Returns:
+            bool: 削除をリクエストしたか
+        """
         return self._action == "delete"
 
     def request_duplicate(self) -> bool:
+        """複製をリクエストしたか
+
+        Returns:
+            bool: 複製をリクエストしたか
+        """
         return self._action == "duplicate"
 
     def _select_combo_data(self, combo: QComboBox, data: str) -> None:
+        """コンボボックスのデータを設定する
+
+        Args:
+            combo (QComboBox): コンボボックス
+            data (str): データ
+        """
         index = combo.findData(data)
         if index >= 0:
             combo.setCurrentIndex(index)
 
     def _on_save(self) -> None:
+        """保存ボタンがクリックされたときのハンドラ"""
         self._action = "save"
         self.accept()
 
     def _on_delete(self) -> None:
+        """削除ボタンがクリックされたときのハンドラ"""
         self._action = "delete"
         self.accept()
 
     def _on_duplicate(self) -> None:
+        """複製ボタンがクリックされたときのハンドラ"""
         self._action = "duplicate"
         self.accept()
 
     def _on_color_button_clicked(self, color: str) -> None:
+        """カラーボタンがクリックされたときのハンドラ
+
+        Args:
+            color (str): 色
+        """
         self._color_edit.setText(color)
         self._set_color_button_selection(color)
 
     def _open_color_dialog(self) -> None:
+        """カラーダイアログを開く"""
         color = QColorDialog.getColor(parent=self)
         if not color.isValid():
             return
@@ -224,14 +269,25 @@ class TaskDialog(QDialog):
         self._sync_color_button_selection_from_text()
 
     def _select_color_preset_by_value(self, value: str | None) -> None:
+        """カラープリセットを値で選択する
+
+        Args:
+            value (str | None): 値
+        """
         normalized = normalize_hex_color(value or "", default="")
         selected = normalized if normalized and normalized in self._color_buttons else None
         self._set_color_button_selection(selected)
 
     def _sync_color_button_selection_from_text(self) -> None:
+        """カラーボタンの選択をテキストから同期する"""
         self._select_color_preset_by_value(self._color_edit.text())
 
     def _set_color_button_selection(self, color: str | None) -> None:
+        """カラーボタンの選択を設定する
+
+        Args:
+            color (str | None): 色
+        """
         for swatch_color, button in self._color_buttons.items():
             selected = swatch_color == color
             button.setChecked(selected)

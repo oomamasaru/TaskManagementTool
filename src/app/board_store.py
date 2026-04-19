@@ -14,17 +14,29 @@ from domain.models.task import Task
 
 
 class BoardStore(QObject):
+    """ボードの状態を保持するクラス"""
+
     board_changed = pyqtSignal()
     filter_changed = pyqtSignal()
 
-    def __init__(self, board_data: BoardData | None = None) -> None:
+    def __init__(self) -> None:
+        """イニシャライザ"""
         super().__init__()
-        self.board_data: BoardData = board_data or BoardData()
+        self.board_data: BoardData = BoardData()
+        """ボードデータ"""
         self.filter_condition = FilterCondition()
+        """フィルター条件"""
         self.selected_task_id: str | None = None
+        """選択中のタスクID"""
         self.undo_stack = QUndoStack(self)
+        """アンドゥスタック"""
 
     def load(self, data: BoardData) -> None:
+        """ボードデータを読み込む
+
+        Args:
+            data (BoardData): ボードデータ
+        """
         self.board_data = data
         self.filter_condition = FilterCondition(
             active_label_ids={label.id for label in data.labels},
@@ -35,6 +47,14 @@ class BoardStore(QObject):
         self.notify_board_changed()
 
     def get_tasks_for_category(self, category_id: str) -> list[Task]:
+        """指定されたカテゴリのタスクを取得する
+
+        Args:
+            category_id (str): カテゴリID
+
+        Returns:
+            list[Task]: タスクのリスト
+        """
         hidden_status_ids = self._hidden_status_ids()
         tasks = [
             task
@@ -45,6 +65,11 @@ class BoardStore(QObject):
         return sorted(filtered, key=lambda task: task.sort_order)
 
     def get_completed_tasks(self) -> list[Task]:
+        """完了したタスクを取得する
+
+        Returns:
+            list[Task]: 完了したタスクのリスト
+        """
         hidden_status_ids = self._hidden_status_ids()
         tasks = [task for task in self.board_data.tasks if task.status_id in hidden_status_ids]
         tasks.sort(
@@ -54,20 +79,36 @@ class BoardStore(QObject):
         return tasks
 
     def get_categories(self) -> list[Category]:
+        """カテゴリを取得する"""
         return sorted(self.board_data.categories, key=lambda category: category.sort_order)
 
     def get_labels(self) -> list[Label]:
+        """ラベルを取得する"""
         return sorted(self.board_data.labels, key=lambda label: label.sort_order)
 
     def get_statuses(self) -> list[Status]:
+        """ステータスを取得する"""
         return sorted(self.board_data.statuses, key=lambda status: status.sort_order)
 
     def set_filter(self, condition: FilterCondition) -> None:
+        """フィルター条件を設定する
+
+        Args:
+            condition (FilterCondition): フィルター条件
+        """
         self.filter_condition = condition
         self.filter_changed.emit()
         self.notify_board_changed()
 
     def task_ids_by_category(self, include_hidden: bool = False) -> dict[str, list[str]]:
+        """カテゴリごとのタスクIDを取得する
+
+        Args:
+            include_hidden (bool): 完了したタスクを含むかどうか
+
+        Returns:
+            dict[str, list[str]]: カテゴリIDごとのタスクIDの辞書
+        """
         hidden_status_ids = self._hidden_status_ids()
         result: dict[str, list[str]] = {}
         for category in self.get_categories():
@@ -82,21 +123,54 @@ class BoardStore(QObject):
         return result
 
     def find_task(self, task_id: str) -> Task | None:
+        """タスクIDからタスクを取得する
+
+        Args:
+            task_id (str): タスクID
+
+        Returns:
+            Task | None: タスク
+        """
         return next((task for task in self.board_data.tasks if task.id == task_id), None)
 
     def find_status(self, status_id: str) -> Status | None:
+        """ステータスIDからステータスを取得する
+
+        Args:
+            status_id (str): ステータスID
+
+        Returns:
+            Status | None: ステータス
+        """
         return next((status for status in self.board_data.statuses if status.id == status_id), None)
 
     def find_category(self, category_id: str) -> Category | None:
+        """カテゴリIDからカテゴリを取得する
+
+        Args:
+            category_id (str): カテゴリID
+
+        Returns:
+            Category | None: カテゴリ
+        """
         return next(
             (category for category in self.board_data.categories if category.id == category_id),
             None,
         )
 
     def notify_board_changed(self) -> None:
+        """ボード変更通知を発行する"""
         self.board_changed.emit()
 
     def clone_task(self, task_id: str) -> Task:
+        """タスクをクローンする
+
+        Args:
+            task_id (str): タスクID
+
+        Returns:
+            Task: クローンしたタスク
+        """
         task = self.find_task(task_id)
         if task is None:
             msg = f"Task not found: {task_id}"
@@ -104,9 +178,22 @@ class BoardStore(QObject):
         return deepcopy(task)
 
     def _hidden_status_ids(self) -> set[str]:
+        """ボードから隠すステータスIDを取得する
+
+        Returns:
+            set[str]: 隠すステータスIDのセット
+        """
         return {status.id for status in self.board_data.statuses if status.hides_from_board}
 
     def _matches_filter(self, task: Task) -> bool:
+        """タスクがフィルター条件に一致するかどうかを判定する
+
+        Args:
+            task (Task): タスク
+
+        Returns:
+            bool: タスクがフィルター条件に一致するかどうか
+        """
         condition = self.filter_condition
 
         search_text = condition.search_text.strip().lower()

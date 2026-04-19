@@ -6,6 +6,8 @@ from commands.base_command import BaseCommand
 
 
 class EditTaskCommand(BaseCommand):
+    """タスク編集コマンド"""
+
     def __init__(
         self,
         store,
@@ -14,6 +16,15 @@ class EditTaskCommand(BaseCommand):
         task_id: str,
         input_data: TaskInputData,
     ) -> None:
+        """イニシャライザ
+
+        Args:
+            store (BoardStore): ボードストア
+            repository (TaskRepository): タスクリポジトリ
+            task_service (TaskService): タスクサービス
+            task_id (str): タスクID
+            input_data (TaskInputData): 入力データ
+        """
         super().__init__("タスク編集", store, repository)
         self._task_service = task_service
         self._task_id = task_id
@@ -22,6 +33,7 @@ class EditTaskCommand(BaseCommand):
         self._after_task = None
 
     def redo(self) -> None:
+        """コマンドをやり直す"""
         if self._after_task is None:
             updated = self._task_service.update_task(self._task_id, self._input_data)
             self._after_task = updated.clone()
@@ -30,6 +42,6 @@ class EditTaskCommand(BaseCommand):
         self._save_board()
 
     def undo(self) -> None:
+        """コマンドを取り消す"""
         self._task_service.replace_task(self._before_task)
         self._save_board()
-

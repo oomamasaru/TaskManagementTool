@@ -5,6 +5,8 @@ from commands.base_command import BaseCommand
 
 
 class ChangeTaskStatusCommand(BaseCommand):
+    """タスクステータス変更コマンド"""
+
     def __init__(
         self,
         store,
@@ -13,6 +15,15 @@ class ChangeTaskStatusCommand(BaseCommand):
         task_id: str,
         after_status_id: str,
     ) -> None:
+        """イニシャライザ
+
+        Args:
+            store (BoardStore): ボードストア
+            repository (TaskRepository): タスクリポジトリ
+            status_service (StatusService): ステータスサービス
+            task_id (str): タスクID
+            after_status_id (str): 変更後のステータスID
+        """
         super().__init__("ステータス変更", store, repository)
         self._store = store
         self._status_service = status_service
@@ -23,6 +34,7 @@ class ChangeTaskStatusCommand(BaseCommand):
         self._has_executed = False
 
     def redo(self) -> None:
+        """コマンドをやり直す"""
         if not self._has_executed:
             self._status_service.change_status(self._task_id, self._after_status_id)
             current = self._store.find_task(self._task_id)
@@ -35,10 +47,10 @@ class ChangeTaskStatusCommand(BaseCommand):
         self._save_board()
 
     def undo(self) -> None:
+        """コマンドを取り消す"""
         self._status_service.set_task_status_exact(
             self._task_id,
             self._before_task.status_id,
             self._before_task.completed_at,
         )
         self._save_board()
-

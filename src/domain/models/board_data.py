@@ -11,10 +11,22 @@ from domain.models.task import Task
 
 @dataclass(slots=True)
 class BoardData:
-    version: int = 1
-    categories: list[Category] = field(default_factory=list)
-    labels: list[Label] = field(default_factory=list)
-    statuses: list[Status] = field(default_factory=list)
-    tasks: list[Task] = field(default_factory=list)
-    settings: AppSettings = field(default_factory=AppSettings)
+    """ボードのデータを保持するクラス"""
 
+    version: int = 1
+    """バージョン"""
+
+    categories: list[Category] = field(default_factory=list)
+    """カテゴリ"""
+
+    labels: list[Label] = field(default_factory=list)
+    """ラベル"""
+
+    statuses: list[Status] = field(default_factory=list)
+    """ステータス"""
+
+    tasks: list[Task] = field(default_factory=list)
+    """タスク"""
+
+    settings: AppSettings = field(default_factory=AppSettings)
+    """設定"""

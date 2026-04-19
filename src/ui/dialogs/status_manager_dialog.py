@@ -23,7 +23,15 @@ from utils.color_utils import STATUS_COLORS, contrast_text_color, normalize_hex_
 
 
 class StatusCardWidget(QFrame):
+    """ステータスカードウィジェット"""
+
     def __init__(self, status: Status, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            status (Status): ステータス
+            parent (QWidget | None, optional): 親ウィジェット Defaults to None.
+        """
         super().__init__(parent)
         bg_color = normalize_hex_color(status.color)
         text_color = contrast_text_color(bg_color)
@@ -52,9 +60,21 @@ class StatusCardWidget(QFrame):
 
 
 class StatusListWidget(QListWidget):
+    """ステータスリストウィジェット"""
+
     reordered = pyqtSignal(list)
+    """並び替えシグナル
+
+    Args:
+        ordered_status_ids (list[str]): 並び替え後のステータスIDリスト
+    """
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            parent (QWidget | None, optional): 親ウィジェット Defaults to None.
+        """
         super().__init__(parent)
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
@@ -63,25 +83,65 @@ class StatusListWidget(QListWidget):
         self.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
 
     def drop_event(self, event: QDropEvent) -> None:
+        """ドロップイベント
+
+        Args:
+            event (QDropEvent): ドロップイベント
+        """
         super().dropEvent(event)
         self.reordered.emit(self.status_ids())
 
     def status_ids(self) -> list[str]:
-        return [
-            str(self.item(row).data(Qt.ItemDataRole.UserRole))
-            for row in range(self.count())
-        ]
+        """ステータスIDリストを取得
+
+        Returns:
+            list[str]: ステータスIDリスト
+        """
+        return [str(self.item(row).data(Qt.ItemDataRole.UserRole)) for row in range(self.count())]
 
 
 class StatusManagerDialog(QDialog):
+    """ステータス管理ダイアログ"""
+
     add_requested = pyqtSignal(str, str, bool)
+    """追加リクエストシグナル
+
+    Args:
+        name (str): ステータス名
+        color (str): ステータス色
+        hides_from_board (bool): 一覧に表示しないか
+    """
     update_requested = pyqtSignal(str, str, str, bool)
+    """更新リクエストシグナル
+
+    Args:
+        status_id (str): ステータスID
+        name (str): ステータス名
+        color (str): ステータス色
+        hides_from_board (bool): 一覧に表示しないか
+    """
     delete_requested = pyqtSignal(str, str)
+    """削除リクエストシグナル
+
+    Args:
+        status_id (str): ステータスID
+        replacement_id (str): 代替ステータスID
+    """
     reorder_requested = pyqtSignal(list)
+    """並び替えリクエストシグナル
+
+    Args:
+        ordered_status_ids (list[str]): 並び替え後のステータスIDリスト
+    """
 
     IMMUTABLE_STATUS_IDS = frozenset({"not_started", "completed"})
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            parent (QWidget | None, optional): 親ウィジェット Defaults to None.
+        """
         super().__init__(parent)
         self.setWindowTitle("ステータス管理")
         self.resize(620, 460)
@@ -108,6 +168,11 @@ class StatusManagerDialog(QDialog):
         root.addLayout(row)
 
     def load_statuses(self, statuses: list[Status]) -> None:
+        """ステータスをロードする
+
+        Args:
+            statuses (list[Status]): ステータスリスト
+        """
         self._statuses_by_id = {status.id: status for status in statuses}
         self._list.clear()
         for status in sorted(statuses, key=lambda item: item.sort_order):
@@ -121,6 +186,7 @@ class StatusManagerDialog(QDialog):
             self._list.setItemWidget(item, card)
 
     def _on_add(self) -> None:
+        """追加ボタンがクリックされたときのハンドラ"""
         dialog = ColorSelectDialog(
             title="ステータス追加",
             presets=STATUS_COLORS,
@@ -141,6 +207,7 @@ class StatusManagerDialog(QDialog):
         )
 
     def _on_item_clicked(self, item: QListWidgetItem) -> None:
+        """アイテムがクリックされたときのハンドラ"""
         _, status = self._status_from_item(item)
         if status is None:
             return
@@ -175,6 +242,7 @@ class StatusManagerDialog(QDialog):
         )
 
     def _on_delete(self) -> None:
+        """削除ボタンがクリックされたときのハンドラ"""
         status_id, status = self._status_from_item(self._list.currentItem())
         if status is None:
             return
@@ -188,9 +256,22 @@ class StatusManagerDialog(QDialog):
         self.delete_requested.emit(status_id, replacement_id)
 
     def _on_list_reordered(self, ordered_status_ids: list[str]) -> None:
+        """リストが並び替えられたときのハンドラ
+
+        Args:
+            ordered_status_ids (list[str]): 並び替え後のステータスIDリスト
+        """
         self.reorder_requested.emit(self._normalized_order_ids(ordered_status_ids))
 
     def _normalized_order_ids(self, ordered_status_ids: list[str]) -> list[str]:
+        """ステータスIDリストを正規化する
+
+        Args:
+            ordered_status_ids (list[str]): 並び替え後のステータスIDリスト
+
+        Returns:
+            list[str]: 正規化後のステータスIDリスト
+        """
         seen: set[str] = set()
         movable_ids: list[str] = []
         for status_id in ordered_status_ids:
@@ -212,12 +293,28 @@ class StatusManagerDialog(QDialog):
         return result
 
     def _status_from_item(self, item: QListWidgetItem | None) -> tuple[str, Status | None]:
+        """アイテムからステータスを取得する
+
+        Args:
+            item (QListWidgetItem | None): アイテム
+
+        Returns:
+            tuple[str, Status | None]: ステータスIDとステータス
+        """
         if item is None:
             return "", None
         status_id = str(item.data(Qt.ItemDataRole.UserRole))
         return status_id, self._statuses_by_id.get(status_id)
 
     def _ask_replacement(self, deleting_status_id: str) -> tuple[str | None, bool]:
+        """代替ステータスを選択する
+
+        Args:
+            deleting_status_id (str): 削除対象のステータスID
+
+        Returns:
+            tuple[str | None, bool]: 代替ステータスIDとOKフラグ
+        """
         rows = [
             (status.id, status.name)
             for status in sorted(self._statuses_by_id.values(), key=lambda item: item.sort_order)

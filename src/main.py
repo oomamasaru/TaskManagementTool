@@ -21,6 +21,14 @@ from ui.main_window import MainWindow
 
 
 def build_controller(data_file_path: Path) -> AppController:
+    """`controller` を構築する
+
+    Args:
+        data_file_path (Path): `data_file_path` を指定する
+
+    Returns:
+        AppController: 処理結果を返す
+    """
     store = BoardStore()
     repository = JsonBoardRepository(path=data_file_path)
     datetime_provider = DateTimeProvider()
@@ -48,6 +56,11 @@ def build_controller(data_file_path: Path) -> AppController:
 
 
 def main() -> int:
+    """アプリケーションのエントリーポイントを実行する
+
+    Returns:
+        int: 処理結果を返す
+    """
     app = QApplication(sys.argv)
     app_font = app.font()
     if app_font.pointSize() <= 0:

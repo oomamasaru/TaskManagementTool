@@ -4,6 +4,8 @@ from datetime import datetime
 
 
 class DateTimeProvider:
-    def now(self) -> datetime:
-        return datetime.now().replace(microsecond=0)
+    """日時プロバイダ"""
 
+    def now(self) -> datetime:
+        """現在日時を取得する"""
+        return datetime.now().replace(microsecond=0)

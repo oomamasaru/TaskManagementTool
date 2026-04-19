@@ -12,7 +12,17 @@ from domain.models.task import Task
 
 
 class BoardSerializer:
+    """ボードシリアライザ"""
+
     def to_dict(self, data: BoardData) -> dict[str, Any]:
+        """ボードデータをディクショナリに変換する
+
+        Args:
+            data (BoardData): ボードデータ
+
+        Returns:
+            dict[str, Any]: ディクショナリ
+        """
         return {
             "version": data.version,
             "categories": [
@@ -41,6 +51,14 @@ class BoardSerializer:
         }
 
     def from_dict(self, payload: dict[str, Any]) -> BoardData:
+        """ディクショナリからボードデータを復元する
+
+        Args:
+            payload (dict[str, Any]): ディクショナリ
+
+        Returns:
+            BoardData: ボードデータ
+        """
         settings = self._build_settings(payload.get("settings", {}))
         return BoardData(
             version=int(payload.get("version", 1)),
@@ -77,6 +95,14 @@ class BoardSerializer:
         )
 
     def _task_to_dict(self, task: Task) -> dict[str, Any]:
+        """タスクをディクショナリに変換する
+
+        Args:
+            task (Task): タスク
+
+        Returns:
+            dict[str, Any]: ディクショナリ
+        """
         return {
             "id": task.id,
             "title": task.title,
@@ -93,6 +119,14 @@ class BoardSerializer:
         }
 
     def _task_from_dict(self, item: dict[str, Any]) -> Task:
+        """ディクショナリからタスクを復元する
+
+        Args:
+            item (dict[str, Any]): ディクショナリ
+
+        Returns:
+            Task: タスク
+        """
         created_at = self._parse_datetime(item.get("created_at")) or datetime.now()
         updated_at = self._parse_datetime(item.get("updated_at")) or created_at
         return Task(
@@ -111,12 +145,28 @@ class BoardSerializer:
         )
 
     def _build_settings(self, item: dict[str, Any]) -> AppSettings:
+        """設定をビルドする
+
+        Args:
+            item (dict[str, Any]): ディクショナリ
+
+        Returns:
+            AppSettings: 設定
+        """
         return AppSettings(
             data_file_path=str(item.get("data_file_path", "task_board.json")),
             date_format=str(item.get("date_format", "%Y-%m-%d")),
         )
 
     def _parse_date(self, value: Any) -> date | None:
+        """日付をパースする
+
+        Args:
+            value (Any): 日付
+
+        Returns:
+            date | None: 日付
+        """
         if not value:
             return None
         if isinstance(value, date):
@@ -124,6 +174,14 @@ class BoardSerializer:
         return date.fromisoformat(str(value))
 
     def _parse_datetime(self, value: Any) -> datetime | None:
+        """日時をパースする
+
+        Args:
+            value (Any): 日時
+
+        Returns:
+            datetime | None: 日時
+        """
         if not value:
             return None
         if isinstance(value, datetime):

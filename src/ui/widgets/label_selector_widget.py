@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
-from PyQt6.QtCore import QPoint, QRect, QSize, QSignalBlocker, Qt, pyqtSignal
+from PyQt6.QtCore import QPoint, QRect, QSignalBlocker, QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -21,47 +21,113 @@ from utils.color_utils import normalize_hex_color
 
 
 class FlowLayout(QLayout):
-    """Flow layout for chip-like widgets."""
+    """フローレイアウト"""
 
     def __init__(self, parent: QWidget | None = None, margin: int = 0, spacing: int = 6) -> None:
+        """イニシャライザ
+
+        Args:
+            parent (QWidget | None): 親ウィジェット。
+            margin (int): レイアウトのマージン。
+            spacing (int): アイテム間のスペース。
+        """
         super().__init__(parent)
         self._items: list[QLayoutItem] = []
         self.setContentsMargins(margin, margin, margin, margin)
         self.setSpacing(spacing)
 
     def addItem(self, item: QLayoutItem) -> None:
+        """レイアウトにアイテムを追加します。
+
+        Args:
+            item (QLayoutItem): 追加するレイアウトアイテム。
+        """
         self._items.append(item)
 
     def count(self) -> int:
+        """アイテムの数を返します。
+
+        Returns:
+            int: アイテムの数。
+        """
         return len(self._items)
 
     def itemAt(self, index: int) -> QLayoutItem | None:
+        """指定されたインデックスのアイテムを返します。
+
+        Args:
+            index (int): アイテムのインデックス。
+
+        Returns:
+            QLayoutItem | None: アイテム、またはインデックスが範囲外の場合はNone。
+        """
         if 0 <= index < len(self._items):
             return self._items[index]
         return None
 
     def takeAt(self, index: int) -> QLayoutItem | None:
+        """指定されたインデックスのアイテムを取り除き、返します。
+
+        Args:
+            index (int): アイテムのインデックス。
+
+        Returns:
+            QLayoutItem | None: 取り除かれたアイテム、またはインデックスが範囲外の場合はNone。
+        """
         if 0 <= index < len(self._items):
             return self._items.pop(index)
         return None
 
     def expandingDirections(self) -> Qt.Orientations:
+        """拡張方向を返します。
+
+        Returns:
+            Qt.Orientations: 拡張方向。
+        """
         return Qt.Orientation(0)
 
     def hasHeightForWidth(self) -> bool:
+        """高さを計算できるかどうかを返します。
+
+        Returns:
+            bool: 高さを計算できるかどうか。
+        """
         return True
 
     def heightForWidth(self, width: int) -> int:
+        """幅から高さを計算します。
+
+        Args:
+            width (int): 幅。
+
+        Returns:
+            int: 高さ。
+        """
         return self._do_layout(QRect(0, 0, width, 0), test_only=True)
 
     def setGeometry(self, rect: QRect) -> None:
+        """ウィジェットのジオメトリを設定します。
+
+        Args:
+            rect (QRect): 新しいジオメトリ。
+        """
         super().setGeometry(rect)
         self._do_layout(rect, test_only=False)
 
     def sizeHint(self) -> QSize:
+        """サイズヒントを返します。
+
+        Returns:
+            QSize: サイズヒント。
+        """
         return self.minimumSize()
 
     def minimumSize(self) -> QSize:
+        """最小サイズを返します。
+
+        Returns:
+            QSize: 最小サイズ。
+        """
         size = QSize()
         for item in self._items:
             size = size.expandedTo(item.minimumSize())
@@ -70,6 +136,15 @@ class FlowLayout(QLayout):
         return size
 
     def _do_layout(self, rect: QRect, test_only: bool) -> int:
+        """内部ヘルパーメソッド。
+
+        Args:
+            rect (QRect): レイアウト領域。
+            test_only (bool): テストモードかどうか。
+
+        Returns:
+            int: 高さを計算できるかどうか。
+        """
         margins = self.contentsMargins()
         effective_rect = rect.adjusted(
             margins.left(),
@@ -102,9 +177,15 @@ class FlowLayout(QLayout):
 
 
 class LabelChipButton(QToolButton):
-    """Toggle chip shown in candidate area."""
+    """選択候補エリアに表示されるトグルチップ"""
 
     def __init__(self, label: Label, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            label (Label): タスク
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self.label_data = label
         self.setText(label.name)
@@ -116,6 +197,7 @@ class LabelChipButton(QToolButton):
         self.toggled.connect(self._refresh_style)
 
     def _refresh_style(self) -> None:
+        """スタイルを更新する"""
         bg = normalize_hex_color(self.label_data.color)
         if self.isChecked():
             border = "#111827"
@@ -142,9 +224,20 @@ class LabelChipButton(QToolButton):
 
 
 class LabelSelectorWidget(QWidget):
-    """Selected label view + candidate label selector."""
+    """ラベル選択ウィジェット。
+
+    表示
+      - 選択済みラベル一覧
+      - 候補ラベル一覧
+    """
 
     def __init__(self, labels: list[Label], parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            labels (list[Label]): タスク
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self._labels_by_id = {label.id: label for label in labels}
         self._buttons_by_id: dict[str, LabelChipButton] = {}
@@ -193,9 +286,19 @@ class LabelSelectorWidget(QWidget):
         self._refresh_selected_view()
 
     def selected_label_ids(self) -> list[str]:
+        """選択済みラベルIDを返します。
+
+        Returns:
+            list[str]: 選択済みラベルIDのリスト。
+        """
         return [label_id for label_id, button in self._buttons_by_id.items() if button.isChecked()]
 
     def set_selected_label_ids(self, label_ids: Iterable[str]) -> None:
+        """選択済みラベルIDを設定します。
+
+        Args:
+            label_ids (Iterable[str]): 設定するラベルIDのイテラブル。
+        """
         selected_set = set(label_ids)
         for label_id, button in self._buttons_by_id.items():
             blocker = QSignalBlocker(button)
@@ -204,6 +307,7 @@ class LabelSelectorWidget(QWidget):
         self._refresh_selected_view()
 
     def _refresh_selected_view(self) -> None:
+        """選択済みビューを更新する"""
         self._clear_layout_widgets(self._selected_layout)
 
         selected_ids = self.selected_label_ids()
@@ -220,12 +324,22 @@ class LabelSelectorWidget(QWidget):
             self._selected_layout.addWidget(chip)
 
     def _remove_label(self, label_id: str) -> None:
+        """ラベルを削除する
+
+        Args:
+            label_id (str): ラベルID
+        """
         button = self._buttons_by_id.get(label_id)
         if button is None:
             return
         button.setChecked(False)
 
     def _clear_layout_widgets(self, layout: QLayout) -> None:
+        """レイアウトのウィジェットをクリアする
+
+        Args:
+            layout (QLayout): レイアウト
+        """
         while layout.count():
             item = layout.takeAt(0)
             if item is None:
@@ -238,9 +352,23 @@ class LabelSelectorWidget(QWidget):
 
 
 class SelectedLabelChipWidget(QFrame):
+    """選択済みラベルチップ"""
+
     remove_requested = pyqtSignal(str)
+    """
+    削除リクエストシグナル
+
+    Args:
+        label_id (str): ラベルID
+    """
 
     def __init__(self, label: Label, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            label (Label): タスク
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self._label = label
         chip_bg = normalize_hex_color(label.color)
@@ -297,4 +425,5 @@ class SelectedLabelChipWidget(QFrame):
         )
 
     def _on_remove_clicked(self) -> None:
+        """削除ボタンがクリックされたときの処理"""
         self.remove_requested.emit(self._label.id)

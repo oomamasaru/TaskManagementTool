@@ -6,11 +6,14 @@ from domain.models.board_data import BoardData
 
 
 class BoardRepository(ABC):
+    """ボードリポジトリ"""
+
     @abstractmethod
     def load(self) -> BoardData:
+        """ボードデータをロードする"""
         raise NotImplementedError
 
     @abstractmethod
     def save(self, data: BoardData) -> None:
+        """ボードデータを保存する"""
         raise NotImplementedError
-

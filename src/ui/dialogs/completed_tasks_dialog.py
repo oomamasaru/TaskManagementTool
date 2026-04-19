@@ -7,7 +7,6 @@ from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QHeaderView,
-    QLabel,
     QLineEdit,
     QPushButton,
     QTableWidget,
@@ -22,7 +21,14 @@ from domain.models.task import Task
 
 
 class CompletedTasksDialog(QDialog):
+    """完了済みタスクダイアログ"""
+
     def __init__(self, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self.setWindowTitle("完了済みタスク")
         self.resize(900, 520)
@@ -68,12 +74,20 @@ class CompletedTasksDialog(QDialog):
         categories: Iterable[Category] = (),
         labels: Iterable[Label] = (),
     ) -> None:
+        """完了済みタスクをロードする
+
+        Args:
+            tasks (list[Task]): タスクリスト
+            categories (Iterable[Category]): カテゴリリスト
+            labels (Iterable[Label]): ラベルリスト
+        """
         self._tasks = tasks
         self._categories = {category.id: category.name for category in categories}
         self._labels = {label.id: label.name for label in labels}
         self._rebuild_table()
 
     def selected_task_id(self) -> str | None:
+        """選択されたタスクIDを返す"""
         row = self._table.currentRow()
         if row < 0:
             return None
@@ -83,35 +97,52 @@ class CompletedTasksDialog(QDialog):
         return str(item.data(Qt.ItemDataRole.UserRole))
 
     def request_restore(self, task_id: str) -> str:
+        """復活リクエスト
+
+        Args:
+            task_id (str): タスクID
+        """
         return task_id
 
     def request_delete(self, task_id: str) -> str:
+        """完全削除リクエスト
+
+        Args:
+            task_id (str): タスクID
+        """
         return task_id
 
     @property
     def action(self) -> str:
+        """実行するアクションを返す"""
         return self._action
 
     def _on_restore(self) -> None:
+        """復活ボタンが押されたときの処理"""
         self._submit_action("restore")
 
     def _on_delete(self) -> None:
+        """完全削除ボタンが押されたときの処理"""
         self._submit_action("delete")
 
     def _submit_action(self, action: str) -> None:
+        """アクションを送信する
+
+        Args:
+            action (str): アクション
+        """
         if self.selected_task_id() is None:
             return
         self._action = action
         self.accept()
 
     def _rebuild_table(self) -> None:
+        """テーブルを再構築する"""
         keyword = self._search_edit.text().strip().lower()
         rows = [
             task
             for task in self._tasks
-            if not keyword
-            or keyword in task.title.lower()
-            or keyword in task.detail.lower()
+            if not keyword or keyword in task.title.lower() or keyword in task.detail.lower()
         ]
         self._table.setRowCount(len(rows))
         for row, task in enumerate(rows):

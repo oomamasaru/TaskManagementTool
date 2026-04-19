@@ -14,9 +14,17 @@ from utils.color_utils import (
 
 
 class LabelFilterBar(QWidget):
+    """ラベルフィルタバー"""
+
     changed = pyqtSignal(set, bool)
+    """変更シグナル"""
 
     def __init__(self, parent: QWidget | None = None) -> None:
+        """イニシャライザ
+
+        Args:
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self._layout = QHBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
@@ -29,21 +37,43 @@ class LabelFilterBar(QWidget):
         self._no_label_button: LabelChipButton | None = None
 
     def set_labels(self, labels: list[Label]) -> None:
+        """ラベルを設定する
+
+        Args:
+            labels (list[Label]): ラベルリスト
+        """
         self._labels = {label.id: label for label in labels}
         self._rebuild()
 
     def set_active(self, active_label_ids: set[str], include_no_label: bool) -> None:
+        """アクティブなラベルを設定する
+
+        Args:
+            active_label_ids (set[str]): アクティブなラベルIDのセット
+            include_no_label (bool): ラベルなしのタスクを含むかどうか
+        """
         self._active_label_ids = set(active_label_ids)
         self._include_no_label = include_no_label
         self._apply_colors()
 
     def active_label_ids(self) -> set[str]:
+        """アクティブなラベルIDのセットを返す
+
+        Returns:
+            set[str]: アクティブなラベルIDのセット
+        """
         return set(self._active_label_ids)
 
     def include_no_label(self) -> bool:
+        """ラベルなしのタスクを含むかどうかを返す
+
+        Returns:
+            bool: ラベルなしのタスクを含むかどうか
+        """
         return self._include_no_label
 
     def _rebuild(self) -> None:
+        """ラベルフィルターバーを再構築する"""
         while self._layout.count():
             item = self._layout.takeAt(0)
             widget = item.widget()
@@ -53,7 +83,9 @@ class LabelFilterBar(QWidget):
 
         for label in sorted(self._labels.values(), key=lambda item: item.sort_order):
             button = LabelChipButton(label)
-            button.clicked.connect(lambda _checked=False, label_id=label.id: self._toggle_label(label_id))
+            button.clicked.connect(
+                lambda _checked=False, label_id=label.id: self._toggle_label(label_id)
+            )
             self._layout.addWidget(button)
             self._buttons[label.id] = button
 
@@ -70,6 +102,7 @@ class LabelFilterBar(QWidget):
         self._apply_colors()
 
     def _no_label_base_color(self) -> str:
+        """ラベル設定なしのベースカラーを返す"""
         return next(
             (
                 normalize_hex_color(str(color.get("bg", "")))
@@ -80,6 +113,7 @@ class LabelFilterBar(QWidget):
         )
 
     def _apply_colors(self) -> None:
+        """ラベルフィルターバーに色を適用する"""
         for label_id, button in self._buttons.items():
             label = self._labels[label_id]
             on = label_id in self._active_label_ids
@@ -103,6 +137,7 @@ class LabelFilterBar(QWidget):
             )
 
     def _toggle_label(self, label_id: str) -> None:
+        """ラベルを切り替える"""
         if label_id in self._active_label_ids:
             self._active_label_ids.remove(label_id)
         else:
@@ -111,11 +146,13 @@ class LabelFilterBar(QWidget):
         self.changed.emit(set(self._active_label_ids), self._include_no_label)
 
     def _toggle_no_label(self) -> None:
+        """ラベル設定なしを切り替える"""
         self._include_no_label = not self._include_no_label
         self._apply_colors()
         self.changed.emit(set(self._active_label_ids), self._include_no_label)
 
     def _build_chip_stylesheet(self, bg: str, text: str, border: str) -> str:
+        """チップのスタイルシートを構築する"""
         return f"""
                 QToolButton {{
                     background:{bg};

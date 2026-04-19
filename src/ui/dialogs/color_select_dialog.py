@@ -20,6 +20,8 @@ from utils.color_utils import normalize_hex_color
 
 
 class ColorSelectDialog(QDialog):
+    """カラー選択ダイアログ"""
+
     def __init__(
         self,
         title: str,
@@ -33,6 +35,20 @@ class ColorSelectDialog(QDialog):
         hide_checkbox_enabled: bool = True,
         parent: QWidget | None = None,
     ) -> None:
+        """イニシャライザ
+
+        Args:
+            title (str): タイトル
+            presets (list[dict[str, str]]): プリセット色
+            color_key (str): 色のキー
+            default_color (str | None): デフォルト色
+            default_name (str | None): デフォルト名
+            show_name_input (bool): 名前入力の表示
+            show_hide_checkbox (bool): 隠すチェックボックスの表示
+            default_hide_checkbox (bool): 隠すチェックボックスのデフォルト値
+            hide_checkbox_enabled (bool): 隠すチェックボックスの有効化
+            parent (QWidget | None): 親ウィジェット
+        """
         super().__init__(parent)
         self.setWindowTitle(title)
         self.resize(420, 220)
@@ -63,7 +79,9 @@ class ColorSelectDialog(QDialog):
             button.setFixedSize(24, 24)
             button.setCursor(Qt.CursorShape.PointingHandCursor)
             button.setToolTip(color)
-            button.clicked.connect(lambda _checked=False, value=color: self._on_swatch_clicked(value))
+            button.clicked.connect(
+                lambda _checked=False, value=color: self._on_swatch_clicked(value)
+            )
             self._swatch_buttons[color] = button
             row = index // 8
             col = index % 8
@@ -99,14 +117,17 @@ class ColorSelectDialog(QDialog):
         self._sync_swatch_selection_from_text()
 
     def selected_color(self) -> str:
+        """選択された色を取得する"""
         return self._color_edit.text().strip()
 
     def selected_name(self) -> str:
+        """選択された名前を取得する"""
         if self._name_edit is None:
             return ""
         return self._name_edit.text().strip()
 
     def hide_checkbox_value(self) -> bool:
+        """隠すチェックボックスの値を取得する"""
         if self._hide_checkbox is None:
             return False
         return self._hide_checkbox.isChecked()
@@ -120,12 +141,25 @@ class ColorSelectDialog(QDialog):
         default_color: str | None = None,
         parent: QWidget | None = None,
     ) -> tuple[str, bool]:
+        """カラー選択ダイアログを表示する
+
+        Args:
+            title (str): タイトル
+            presets (list[dict[str, str]]): プリセット色
+            color_key (str): 色のキー
+            default_color (str | None): デフォルト色
+            parent (QWidget | None): 親ウィジェット
+
+        Returns:
+            tuple[str, bool]: (選択された色, 成功フラグ)
+        """
         dialog = cls(title, presets, color_key, default_color, parent)
         if dialog.exec() != dialog.DialogCode.Accepted:
             return "", False
         return dialog.selected_color(), True
 
     def accept(self) -> None:
+        """OKボタンが押されたときの処理"""
         if self._show_name_input and not self.selected_name():
             QMessageBox.information(self, "入力エラー", "名前を入力してください。")
             return
@@ -135,10 +169,16 @@ class ColorSelectDialog(QDialog):
         super().accept()
 
     def _on_swatch_clicked(self, color: str) -> None:
+        """プリセット色のボタンがクリックされたときの処理
+
+        Args:
+            color (str): 色
+        """
         self._color_edit.setText(color)
         self._set_selected_swatch(color)
 
     def _open_color_dialog(self) -> None:
+        """カラーピッカーを開く"""
         color = QColorDialog.getColor(parent=self)
         if not color.isValid():
             return
@@ -146,6 +186,7 @@ class ColorSelectDialog(QDialog):
         self._sync_swatch_selection_from_text()
 
     def _sync_swatch_selection_from_text(self) -> None:
+        """テキスト入力からプリセット色の選択を同期する"""
         color = normalize_hex_color(self._color_edit.text(), default="")
         if color in self._swatch_buttons:
             self._set_selected_swatch(color)
@@ -153,6 +194,11 @@ class ColorSelectDialog(QDialog):
         self._set_selected_swatch(None)
 
     def _set_selected_swatch(self, color: str | None) -> None:
+        """プリセット色の選択を設定する
+
+        Args:
+            color (str | None): 色
+        """
         for swatch_color, button in self._swatch_buttons.items():
             selected = swatch_color == color
             button.setChecked(selected)
