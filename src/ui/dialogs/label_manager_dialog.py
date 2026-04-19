@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import (
     QCheckBox,
     QDialog,
@@ -17,7 +16,6 @@ from domain.models.label import Label
 from ui.dialogs.color_select_dialog import ColorSelectDialog
 from ui.widgets.label_card_widget import LabelCardWidget
 from utils.color_utils import TASK_LABEL_COLORS
-from utils.debug_trace import trace_debug
 
 
 class _LabelListItemWidget(QWidget):
@@ -48,7 +46,6 @@ class LabelManagerDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("ラベル管理")
         self.resize(500, 420)
-        trace_debug(f"LabelManagerDialog:init id={id(self)} parent={type(parent).__name__}")
 
         self._labels_by_id: dict[str, Label] = {}
         self._checked_label_ids: set[str] = set()
@@ -105,7 +102,6 @@ class LabelManagerDialog(QDialog):
         self._sync_delete_button_state()
 
     def _on_add(self) -> None:
-        trace_debug(f"LabelManagerDialog:_on_add:start id={id(self)}")
         dialog = ColorSelectDialog(
             title="ラベル追加",
             presets=TASK_LABEL_COLORS,
@@ -116,9 +112,7 @@ class LabelManagerDialog(QDialog):
             parent=self,
         )
         if dialog.exec() != dialog.DialogCode.Accepted:
-            trace_debug(f"LabelManagerDialog:_on_add:cancel id={id(self)}")
             return
-        trace_debug(f"LabelManagerDialog:_on_add:emit add_requested id={id(self)}")
         self.add_requested.emit(dialog.selected_name(), dialog.selected_color())
 
     def _on_item_double_clicked(self, item: QListWidgetItem) -> None:
@@ -149,7 +143,6 @@ class LabelManagerDialog(QDialog):
 
     def _on_delete(self) -> None:
         if not self._checked_label_ids:
-            trace_debug(f"LabelManagerDialog:_on_delete:skip no checked id={id(self)}")
             return
 
         target_ids = [
@@ -158,22 +151,7 @@ class LabelManagerDialog(QDialog):
             if label.id in self._checked_label_ids
         ]
         for label_id in target_ids:
-            trace_debug(
-                f"LabelManagerDialog:_on_delete:emit delete_requested id={id(self)} label_id={label_id}"
-            )
             self.delete_requested.emit(label_id)
 
     def _sync_delete_button_state(self) -> None:
         self._delete_button.setEnabled(bool(self._checked_label_ids))
-
-    def done(self, result: int) -> None:
-        """終了時に結果を記録する。"""
-        trace_debug(
-            f"LabelManagerDialog:done id={id(self)} result={result} visible={self.isVisible()}"
-        )
-        super().done(result)
-
-    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
-        """クローズイベント時のログを記録する。"""
-        trace_debug(f"LabelManagerDialog:closeEvent id={id(self)}")
-        super().closeEvent(event)

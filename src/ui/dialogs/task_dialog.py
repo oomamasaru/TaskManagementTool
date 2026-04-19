@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import date
 
 from PyQt6.QtCore import QDate, Qt
-from PyQt6.QtGui import QCloseEvent
 from PyQt6.QtWidgets import (
     QCheckBox,
     QColorDialog,
@@ -28,7 +27,6 @@ from domain.models.status import Status
 from domain.models.task import Task
 from ui.widgets.label_selector_widget import LabelSelectorWidget
 from utils.color_utils import TASK_LABEL_COLORS, normalize_hex_color
-from utils.debug_trace import trace_debug
 
 
 class TaskDialog(QDialog):
@@ -58,11 +56,6 @@ class TaskDialog(QDialog):
         self._task = task
         self._category_id = task.category_id if task is not None else (default_category_id or "")
         self._action = "save"
-        trace_debug(
-            "TaskDialog:init "
-            f"id={id(self)} task_id={task.id if task is not None else None} "
-            f"default_category_id={default_category_id}"
-        )
 
         root = QVBoxLayout(self)
         form = QFormLayout()
@@ -212,14 +205,6 @@ class TaskDialog(QDialog):
             status_id=str(self._status_combo.currentData()),
         )
 
-    def set_labels(self, labels: list[Label]) -> None:
-        """ラベル一覧を再設定する。
-
-        Args:
-            labels (list[Label]): ラベル一覧
-        """
-        self._label_selector.set_labels(labels)
-
     def set_input(self, input_data: TaskInputData) -> None:
         """入力値をフォームへ復元する。
 
@@ -279,39 +264,22 @@ class TaskDialog(QDialog):
     def _on_save(self) -> None:
         """保存ボタンがクリックされたときのハンドラ"""
         self._action = "save"
-        trace_debug(f"TaskDialog:_on_save id={id(self)}")
         self.accept()
 
     def _on_delete(self) -> None:
         """削除ボタンがクリックされたときのハンドラ"""
         self._action = "delete"
-        trace_debug(f"TaskDialog:_on_delete id={id(self)}")
         self.accept()
 
     def _on_duplicate(self) -> None:
         """複製ボタンがクリックされたときのハンドラ"""
         self._action = "duplicate"
-        trace_debug(f"TaskDialog:_on_duplicate id={id(self)}")
         self.accept()
 
     def _on_open_label_manager(self) -> None:
         """ラベル管理ボタンがクリックされたときのハンドラ。"""
-        trace_debug(f"TaskDialog:_on_open_label_manager id={id(self)}")
         self._action = "manage_labels"
         self.reject()
-
-    def done(self, result: int) -> None:
-        """終了時に結果を記録する。"""
-        trace_debug(
-            f"TaskDialog:done id={id(self)} result={result} "
-            f"action={self._action} visible={self.isVisible()}"
-        )
-        super().done(result)
-
-    def closeEvent(self, event: QCloseEvent) -> None:  # noqa: N802
-        """クローズイベント時のログを記録する。"""
-        trace_debug(f"TaskDialog:closeEvent id={id(self)}")
-        super().closeEvent(event)
 
     def _on_color_button_clicked(self, color: str) -> None:
         """カラーボタンがクリックされたときのハンドラ
